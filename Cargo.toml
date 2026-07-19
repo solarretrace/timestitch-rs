@@ -1,6 +1,6 @@
 [package]
 name = "timestitch"
-version = "0.1"
+version = "0.1.0"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -24,39 +24,31 @@ default = []
 
 # Required dependencies
 [dependencies]
-
-
-# Optional dependencies
-
-# Dependencies used for tests, examples, and benches.
-[dev-dependencies]
+anyhow = "1.0"
+clap = {
+	version = "4.6",
+	features = ["derive", "suggestions", "color", "cargo"] }
+chrono = "0.4"
+colored = "3.1"
+ron = "0.12"
+serde = {
+	version = "1.0",
+	features = ["derive"] }
+toml = "1.1"
+tracing = { version = "0.1.31" }
+tracing-appender = "0.2.0"
+tracing-subscriber = {
+	version = "0.3.9",
+	features = ["env-filter"] }
 
 
 # The development profile, used for `cargo build`
 [profile.dev]
 opt-level = 0
-debug = true
-rpath = false
-lto = false
-debug-assertions = true
-incremental = true
-overflow-checks = true
-
-# Development profile overrides, ensure dependent crates run fast.
-[profile.dev.package."*"]
-opt-level = 3
-debug-assertions = false
-codegen-units = 1
-#strip = "debuginfo"
+debug = false
 
 # The release profile, used for `cargo build --release`
 [profile.release]
-opt-level = 3
+opt-level = 2
 debug = true
-rpath = false
-lto = "fat"
-debug-assertions = false
-codegen-units = 1
-incremental = false
-overflow-checks = true
-#strip = "debuginfo"
+

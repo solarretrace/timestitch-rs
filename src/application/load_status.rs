@@ -7,11 +7,13 @@
 //! File source and modification tracking.
 ////////////////////////////////////////////////////////////////////////////////
 
+// External library imports.
+use serde::Deserialize;
+use serde::Serialize;
 
 // Standard library imports.
 use std::path::Path;
 use std::path::PathBuf;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -19,6 +21,7 @@ use std::path::PathBuf;
 ////////////////////////////////////////////////////////////////////////////////
 /// The loaded file format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Deserialize, Serialize)]
 #[repr(u8)]
 pub enum Format {
 	/// RON format.

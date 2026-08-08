@@ -7,9 +7,9 @@
 //! Runtime application configuration.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // Internal library imports.
 use crate::application::LoadStatus;
+use crate::application::Format;
 use crate::application::TraceConfig;
 
 // External library imports.
@@ -29,7 +29,6 @@ use std::path::Path;
 use std::path::PathBuf;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Config
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,11 +46,13 @@ pub struct Config {
 	#[serde(default = "Config::default_trace_config")]
 	pub trace_config: TraceConfig,
 	
+	/// The default format for the prefs file.
+	#[serde(default = "Config::default_prefs_format")]
+	pub prefs_format: Format,
+
 	/// The path for the prefs file.
 	#[serde(default = "Config::default_prefs_path")]
 	pub prefs_path: PathBuf,
-
-	// TODO: Stall path
 }
 
 
@@ -73,26 +74,33 @@ impl Config {
 	/// [`Prefs`]: crate::application::Prefs
 	pub const DEFAULT_PREFS_PATH: &'static str = ".stall-preferences";
 
-	/// The default path to look for the stall file.
+	/// The default format for the config file.
 	///
-	/// [`Stall`]: crate::application::Stall
-	pub const DEFAULT_STALL_PATH: &'static str = ".stall";
+	/// [`Prefs`]: crate::application::Prefs
+	pub const DEFAULT_CONFIG_FORMAT: Format = Format::Toml;
+
+	/// The default format for the prefs file.
+	///
+	/// [`Prefs`]: crate::application::Prefs
+	pub const DEFAULT_PREFS_FORMAT: Format = Format::Toml;
 
 	/// Constructs a new `Config` with the default options.
 	#[must_use]
 	pub fn new() -> Self {
 		Self {
-			load_status: LoadStatus::default(),
+			load_status: LoadStatus::default()
+				.with_format(Self::DEFAULT_CONFIG_FORMAT),
 			trace_config: Self::default_trace_config(),
+			prefs_format: Self::default_prefs_format(),
 			prefs_path: Self::default_prefs_path(),
 		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////
-	// File and serialization methods.
+	// Accessors
 	////////////////////////////////////////////////////////////////////////////
 
-	/// Returns the given `Config` with the given load path.
+	/// Sets the load path and returns the `Config`.
 	#[must_use]
 	pub fn with_load_path<P>(mut self, path: P) -> Self
 		where P: AsRef<Path>
@@ -101,29 +109,51 @@ impl Config {
 		self
 	}
 
-	/// Returns the `Config`'s load path.
+	/// Sets the file format and returns the `Config`.
+	#[must_use]
+	pub fn with_format(mut self, format: Format) -> Self	{
+		self.set_format(format);
+		self
+	}
+
+	/// Returns the load path.
 	#[must_use]
 	pub fn load_path(&self) -> Option<&Path> {
 		self.load_status.load_path()
 	}
 
-	/// Sets the `Config`'s load path.
+	/// Returns the modification flag.
+	#[must_use]
+	pub const fn modified(&self) -> bool {
+		self.load_status.modified()
+	}
+
+	/// Returns the file format.
+	#[must_use]
+	pub const fn format(&self) -> Option<Format> {
+		self.load_status.format()
+	}
+
+	/// Sets the load path.
 	pub fn set_load_path<P>(&mut self, path: P)
 		where P: AsRef<Path>
 	{
 		self.load_status.set_load_path(path);
 	}
 
-	/// Returns true if the Config was modified.
-	#[must_use]
-	pub const fn modified(&self) -> bool {
-		self.load_status.modified()
-	}
-
-	/// Sets the Config modification flag.
+	/// Sets the modification flag.
 	pub fn set_modified(&mut self, modified: bool) {
 		self.load_status.set_modified(modified);
 	}
+
+	/// Sets the file format.
+	pub fn set_format(&mut self, format: Format) {
+		self.load_status.set_format(format);
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// File and serialization methods.
+	////////////////////////////////////////////////////////////////////////////
 
 	/// Constructs a new `Config` with options read from the given file path.
 	pub fn read_from_path<P>(path: P) -> Result<Self, Error> 
@@ -195,14 +225,53 @@ impl Config {
 				self.write_to_path_if_new(path)?;
 				Ok(true)
 			},
-			None => Ok(false)    
+			None => Ok(false)
 		}
 	}
 
 	/// Constructs a new `Config` with options parsed from the given file.
+	///
+	/// Each file format will be tried in order, and the first to succed will be
+	/// returned.
 	pub fn read_from_file(mut file: File) -> Result<Self, Error>  {
-		Self::parse_ron_from_file(&mut file)
+		let res = Self::parse_toml_from_file(&mut file);
+		if res.is_ok() { return res; }
+
+		let next = Self::parse_ron_from_file(&mut file);
+		if next.is_ok() { return next; }
+
+		res
 	}
+
+	/// Constructs a new `Config` with options parsed from the given file and
+	/// format.
+	pub fn read_from_file_format(mut file: File, format: Format)
+		-> Result<Self, Error> 
+	{
+		match format {
+			Format::Ron  => Self::parse_ron_from_file(&mut file),
+			Format::Toml => Self::parse_toml_from_file(&mut file),
+		}
+	}
+
+	/// Write the `Config` into the given file.
+	pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
+		self.generate_ron_into_file(&mut file)
+	}
+
+	/// Write the `Config` into the given file and format.
+	pub fn write_to_file_format(&self, mut file: File, format: Format)
+		-> Result<(), Error>
+	{
+		match format {
+			Format::Ron  => self.generate_ron_into_file(&mut file),
+			Format::Toml => self.generate_toml_into_file(&mut file),
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// RON format processing.
+	////////////////////////////////////////////////////////////////////////////
 
 	/// Parses a `Config` from a file using the RON format.
 	fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
@@ -221,22 +290,17 @@ impl Config {
 		use ron::de::Deserializer;
 		let mut d = Deserializer::from_bytes(bytes)
 			.context("Failed deserializing RON file")?;
-		let config = Self::deserialize(&mut d)
+		let mut config = Self::deserialize(&mut d)
 			.context("Failed parsing RON file")?;
 		d.end()
 			.context("Failed parsing RON file")?;
-
+		config.load_status.set_format(Format::Ron);
 		Ok(config) 
-	}
-
-	/// Write the `Config` into the given file.
-	pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
-		self.generate_ron_into_file(&mut file)
 	}
 
 	/// Parses a `Config` from a file using the RON format.
 	fn generate_ron_into_file(&self, file: &mut File) -> Result<(), Error> {
-		tracing::debug!("Serializing & writing Config file.");
+		tracing::debug!("Serializing & writing Config file (RON).");
 		let pretty = ron::ser::PrettyConfig::new()
 			.depth_limit(2)
 			.separate_tuple_members(true)
@@ -252,6 +316,43 @@ impl Config {
 	}
 
 	////////////////////////////////////////////////////////////////////////////
+	// TOML format processing.
+	////////////////////////////////////////////////////////////////////////////
+
+	/// Parses a `Config` from a file using the TOML format.
+	fn parse_toml_from_file(file: &mut File) -> Result<Self, Error> {
+		let len = file.metadata()
+			.context("Failed to recover file metadata.")?
+			.len();
+		let mut buf = Vec::with_capacity(len.try_into()?);
+		let _ = file.read_to_end(&mut buf)
+			.context("Failed to read config file")?;
+
+		Self::parse_toml_from_bytes(&buf[..])
+	}
+
+	/// Parses a `Config` from a buffer using the TOML format.
+	fn parse_toml_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+		let mut config: Self = toml::from_slice(bytes)
+			.context("Failed deserializing TOML file")?;
+		config.load_status.set_format(Format::Toml);
+
+		Ok(config) 
+	}
+
+	/// Parses a `Config` from a file using the TOML format.
+	fn generate_toml_into_file(&self, file: &mut File) -> Result<(), Error> {
+		tracing::debug!("Serializing & writing Config file (TOML).");
+		let s = toml::to_string(&self)
+			.context("Failed to serialize TOML file")?;
+		let mut writer = BufWriter::new(file);
+		writer.write_all(s.as_bytes())
+			.context("Failed to write TOML file")?;
+		writer.flush()
+			.context("Failed to flush file buffer")
+	}
+
+	////////////////////////////////////////////////////////////////////////////
 	// Default constructors for serde.
 	////////////////////////////////////////////////////////////////////////////
 
@@ -262,12 +363,15 @@ impl Config {
 		TraceConfig::default()
 	}
 	
+	/// Returns the default prefs format.
+	const fn default_prefs_format() -> Format {
+		Self::DEFAULT_PREFS_FORMAT
+	}
 
 	/// Returns the default prefs file path.
 	fn default_prefs_path() -> PathBuf {
 		PathBuf::from(Self::DEFAULT_PREFS_PATH)
 	}
-
 }
 
 impl std::fmt::Display for Config {
@@ -282,6 +386,8 @@ impl std::fmt::Display for Config {
 		for filter in &self.trace_config.filters {
 			writeln!(fmt, "\t\t{:?}", filter)?;
 		}
+		writeln!(fmt, "\tprefs_format: {:?}", 
+			self.prefs_format)?;
 		writeln!(fmt, "\tprefs_path: {:?}", 
 			self.prefs_path)?;
 

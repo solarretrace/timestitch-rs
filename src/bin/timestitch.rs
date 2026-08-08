@@ -7,16 +7,17 @@
 //! Application entry point.
 ////////////////////////////////////////////////////////////////////////////////
 
-
+// Internal library imports.
+use timestitch::application::Config;
+use timestitch::application::Prefs;
 use timestitch::application::TraceGuard;
+use timestitch::application::CommandOptions;
 
 // External library imports.
 use anyhow::Context;
 use anyhow::Error;
-use anyhow::anyhow;
 use clap::Parser;
 use clap::error::ErrorKind;
-use clap::CommandFactory as _;
 use tracing::event;
 use tracing::Level;
 use tracing::span;
@@ -27,7 +28,6 @@ use tracing::span;
 ////////////////////////////////////////////////////////////////////////////////
 /// The application entry point.
 pub fn main() {
-    
     // The worker_guard holds the worker thread handle for the nonblocking
     // trace writer. It should be held until all tracing is complete, as any
     // trace spans or events after it is dropped will be ignored.
@@ -43,7 +43,7 @@ pub fn main() {
         eprintln!("{:?}", err);
 
         let exit_code = match err.downcast::<clap::Error>()
-        .map(|e| e.kind())
+            .map(|e| e.kind())
         {
             Ok(ErrorKind::DisplayHelp)    |
             Ok(ErrorKind::DisplayVersion) => 0,
@@ -55,11 +55,95 @@ pub fn main() {
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // main_facade
 ////////////////////////////////////////////////////////////////////////////////
 /// The application facade for propagating user errors.
 pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
+    // Parse opts line options.
+    let opts = CommandOptions::try_parse()?;
+
+    // We lazily populate the current directory. We may fail to access it, and
+    // it would be a spurious error to fail if we don't actually need to use it.
+    let mut cur_dir = None;
+
+    // Find the path for the config file.
+    let config_path = match &opts.config {
+        Some(path) => path.clone(),
+        None => {
+            if cur_dir.is_none() {
+                cur_dir = Some(std::env::current_dir()?);
+            }
+            cur_dir.as_ref().unwrap().join(Config::DEFAULT_CONFIG_PATH)
+        },
+    };
+
+    // Load the config file.
+    let mut config_load_status = Ok(());
+    let config = Config::read_from_path(&config_path)
+        .with_context(|| format!("Unable to load config file: {:?}", 
+            config_path))
+        .unwrap_or_else(|e| {
+            // Store the error for output until after the logger is configured.
+            config_load_status = Err(e);
+            Config::new().with_load_path(&config_path)
+        });
+
+    // Initialize the global tracing subscriber.
+    let base_level = match (opts.verbose, opts.quiet, opts.trace) {
+        (_, _, true) => Level::TRACE,
+        (_, true, _) => Level::WARN,
+        (true, _, _) => Level::INFO,
+        _            => Level::WARN,
+    };
+    *trace_guard = config.trace_config.init_global_default(base_level)?;
+    let _span = span!(Level::INFO, "main").entered();
+
+
+    // Print version information.
+    event!(Level::INFO, "TimeStitch version: {}", env!("CARGO_PKG_VERSION"));
+    let rustc_meta = rustc_version_runtime::version_meta();
+    event!(Level::DEBUG, "Rustc version: {} {:?}",
+        rustc_meta.semver,
+        rustc_meta.channel);
+    if let Some(hash) = rustc_meta.commit_hash {
+        event!(Level::DEBUG, "Rustc git commit: {}", hash);
+    }
+    event!(Level::DEBUG, "{:#?}", opts);
+    event!(Level::DEBUG, "{:#?}", config);
+
+    // Find the path for the prefs file.
+    let prefs_path = match &opts.prefs {
+        Some(path) => path.clone(),
+        None => {
+            if cur_dir.is_none() {
+                cur_dir = Some(std::env::current_dir()?);
+            }
+            cur_dir.as_ref().unwrap().join(&config.prefs_path)
+        },
+    };
+
+    // Load the prefs file.
+    let prefs = match Prefs::read_from_path(&prefs_path) {
+        Err(e) if opts.prefs.is_some() => {
+            // Path is user-specified, so it is an error to now load it.
+            return Err(e).with_context(|| format!(
+                "Unable to load preferences file: {:?}", 
+                prefs_path));
+        },
+        Err(_) => {
+            // Path is default, so it is ok to use default prefs.
+            event!(Level::DEBUG, "Using default prefs.");
+            Prefs::new().with_load_path(prefs_path)
+        },
+        Ok(prefs) => {
+            event!(Level::TRACE, "{:#?}", prefs); 
+            prefs
+        },
+    };
+    event!(Level::DEBUG, "{:#?}", prefs);
+
+
     Ok(())
 }
+

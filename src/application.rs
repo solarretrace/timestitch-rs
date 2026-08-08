@@ -9,13 +9,15 @@
 
 
 // Internal modules.
+mod command;
 mod config;
 mod load_status;
-mod trace;
 mod prefs;
+mod trace;
 
 
 // Exports.
+pub use command::*;
 pub use config::*;
 pub use load_status::*;
 pub use trace::*;

@@ -15,6 +15,20 @@ use std::path::PathBuf;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Format
+////////////////////////////////////////////////////////////////////////////////
+/// The loaded file format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum Format {
+	/// RON format.
+	Ron,
+	/// TOML format.
+	Toml,
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // LoadStatus
 ////////////////////////////////////////////////////////////////////////////////
 /// Structure for tracking a file's load status.
@@ -24,6 +38,8 @@ pub struct LoadStatus {
 	load_path: Option<PathBuf>,
 	/// Whether the data has been modified since last save.
 	modified: bool,
+	/// The loaded file format.
+	format: Option<Format>,
 }
 
 impl Default for LoadStatus {
@@ -39,10 +55,11 @@ impl LoadStatus {
 		Self {
 			load_path: None,
 			modified: false,
+			format: None,
 		}
 	}
 
-	/// Returns the `LoadStatus` with the given load path.
+	/// Sets the load path and returns the `LoadStatus`.
 	#[must_use]
 	pub fn with_load_path<P>(mut self, path: P) -> Self
 		where P: AsRef<Path>
@@ -51,11 +68,19 @@ impl LoadStatus {
 		self
 	}
 
-	/// Returns the `LoadStatus` with the given data modification flag.
+	/// Sets the modification flag and returns the `LoadStatus`.
 	#[must_use]
 	pub fn with_modified(mut self, modified: bool) -> Self
 	{
 		self.set_modified(modified);
+		self
+	}
+
+	/// Sets the format and returns the `LoadStatus`
+	#[must_use]
+	pub fn with_format(mut self, format: Format) -> Self
+	{
+		self.set_format(format);
 		self
 	}
 
@@ -65,11 +90,16 @@ impl LoadStatus {
 		self.load_path.as_ref().map(AsRef::as_ref)
 	}
 
-	/// Sets the `LoadStatus`'s load path.
-	pub fn set_load_path<P>(&mut self, path: P)
-		where P: AsRef<Path>
-	{
-		self.load_path = Some(path.as_ref().to_owned());
+	/// Returns the value of the modification flag.
+	#[must_use]
+	pub const fn modified(&self) -> bool {
+		self.modified
+	}
+
+	/// Returns the file format.
+	#[must_use]
+	pub const fn format(&self) -> Option<Format> {
+		self.format
 	}
 
 	/// Clears the `LoadStatus`'s load path.
@@ -77,14 +107,20 @@ impl LoadStatus {
 		self.load_path = None;
 	}
 
-	/// Returns true if the data was modified.
-	#[must_use]
-	pub const fn modified(&self) -> bool {
-		self.modified
+	/// Sets the `LoadStatus`'s load path.
+	pub fn set_load_path<P>(&mut self, path: P)
+		where P: AsRef<Path>
+	{
+		self.load_path = Some(path.as_ref().to_owned());
 	}
 
-	/// Sets the data modification flag.
+	/// Sets the modification flag.
 	pub fn set_modified(&mut self, modified: bool) {
 		self.modified = modified;
+	}
+
+	/// Sets file format.
+	pub fn set_format(&mut self, format: Format) {
+		self.format = Some(format);
 	}
 }

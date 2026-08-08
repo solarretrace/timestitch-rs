@@ -66,13 +66,13 @@ impl Config {
 	/// The default path to look for the [`Config`] file, relative to the app root.
 	///
 	/// [`Config`]: crate::application::Config
-	pub const DEFAULT_CONFIG_PATH: &'static str = ".stall-config";
+	pub const DEFAULT_CONFIG_PATH: &'static str = "timestich.conf";
 
 	/// The default path to look for the [`Prefs`] file, relative to the app
 	/// root.
 	///
 	/// [`Prefs`]: crate::application::Prefs
-	pub const DEFAULT_PREFS_PATH: &'static str = ".stall-preferences";
+	pub const DEFAULT_PREFS_PATH: &'static str = "timestitch.toml";
 
 	/// The default format for the config file.
 	///

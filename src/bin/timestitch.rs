@@ -126,17 +126,18 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
     // Load the prefs file.
     let prefs = match Prefs::read_from_path(&prefs_path) {
         Err(e) if opts.prefs.is_some() => {
-            // Path is user-specified, so it is an error to now load it.
+            // Path is user-specified, so it is an error to not load it.
             return Err(e).with_context(|| format!(
                 "Unable to load preferences file: {:?}", 
                 prefs_path));
         },
         Err(_) => {
-            // Path is default, so it is ok to use default prefs.
+            // Path is default, so it is ok to use default prefs fallback.
             event!(Level::DEBUG, "Using default prefs.");
             Prefs::new().with_load_path(prefs_path)
         },
         Ok(prefs) => {
+            // Prefs path successfully loaded.
             event!(Level::TRACE, "{:#?}", prefs); 
             prefs
         },

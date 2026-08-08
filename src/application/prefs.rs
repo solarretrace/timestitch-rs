@@ -7,9 +7,10 @@
 //! User preferences.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // Internal library imports.
 use crate::application::LoadStatus;
+use crate::application::Format;
+use crate::application::Config;
 
 // External library imports.
 use anyhow::Context as _;
@@ -30,7 +31,8 @@ use std::path::Path;
 ////////////////////////////////////////////////////////////////////////////////
 // Prefs
 ////////////////////////////////////////////////////////////////////////////////
-/// User preferences.
+/// Application configuration data. Configures the logger, window, renderer,
+/// application limits, and behaviors.
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -39,6 +41,7 @@ pub struct Prefs {
 	#[serde(skip)]
 	load_status: LoadStatus,
 }
+
 
 impl Default for Prefs {
 	fn default() -> Self {
@@ -51,15 +54,16 @@ impl Prefs {
 	#[must_use]
 	pub fn new() -> Self {
 		Self {
-			load_status: LoadStatus::default(),
+			load_status: LoadStatus::default()
+				.with_format(Config::DEFAULT_PREFS_FORMAT),
 		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////
-	// File and serialization methods.
+	// Accessors
 	////////////////////////////////////////////////////////////////////////////
-	
-	/// Returns the given `Prefs` with the given load path.
+
+	/// Sets the load path and returns the `Prefs`.
 	#[must_use]
 	pub fn with_load_path<P>(mut self, path: P) -> Self
 		where P: AsRef<Path>
@@ -68,47 +72,67 @@ impl Prefs {
 		self
 	}
 
-	/// Returns the `Prefs`'s load path.
+	/// Sets the file format and returns the `Prefs`.
+	#[must_use]
+	pub fn with_format(mut self, format: Format) -> Self	{
+		self.set_format(format);
+		self
+	}
+
+	/// Returns the load path.
 	#[must_use]
 	pub fn load_path(&self) -> Option<&Path> {
 		self.load_status.load_path()
 	}
 
-	/// Sets the `Prefs`'s load path.
+	/// Returns the modification flag.
+	#[must_use]
+	pub const fn modified(&self) -> bool {
+		self.load_status.modified()
+	}
+
+	/// Returns the file format.
+	#[must_use]
+	pub const fn format(&self) -> Option<Format> {
+		self.load_status.format()
+	}
+
+	/// Sets the load path.
 	pub fn set_load_path<P>(&mut self, path: P)
 		where P: AsRef<Path>
 	{
 		self.load_status.set_load_path(path);
 	}
 
-	/// Returns true if the Prefs was modified.
-	#[must_use]
-	pub const fn modified(&self) -> bool {
-		self.load_status.modified()
-	}
-
-	/// Sets the Prefs modification flag.
+	/// Sets the modification flag.
 	pub fn set_modified(&mut self, modified: bool) {
 		self.load_status.set_modified(modified);
 	}
 
+	/// Sets the file format.
+	pub fn set_format(&mut self, format: Format) {
+		self.load_status.set_format(format);
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// File and serialization methods.
+	////////////////////////////////////////////////////////////////////////////
+
 	/// Constructs a new `Prefs` with options read from the given file path.
-	#[tracing::instrument(skip_all, err)]
 	pub fn read_from_path<P>(path: P) -> Result<Self, Error> 
 		where P: AsRef<Path>
 	{
 		let path = path.as_ref();
 		let file = File::open(path)
 			.with_context(|| format!(
-				"Failed to open prefs file for reading: {}",
+				"Failed to open config file for reading: {}",
 				path.display()))?;
-		let mut prefs = Self::read_from_file(file)?;
-		prefs.set_load_path(path);
-		Ok(prefs)
+		let mut config = Self::read_from_file(file)?;
+		config.set_load_path(path);
+		Ok(config)
 	}
 
 	/// Open a file at the given path and write the `Prefs` into it.
-	#[tracing::instrument(skip_all, err)]
 	pub fn write_to_path<P>(&self, path: P) -> Result<(), Error>
 		where P: AsRef<Path>
 	{
@@ -119,15 +143,14 @@ impl Prefs {
 			.create(true)
 			.open(path)
 			.with_context(|| format!(
-				"Failed to create/open prefs file for writing: {}",
+				"Failed to create/open config file for writing: {}",
 				path.display()))?;
 		self.write_to_file(file)
-			.context("Failed to write prefs file")?;
+			.context("Failed to write config file")?;
 		Ok(())
 	}
 	
 	/// Create a new file at the given path and write the `Prefs` into it.
-	#[tracing::instrument(skip_all, err)]
 	pub fn write_to_path_if_new<P>(&self, path: P) -> Result<(), Error>
 		where P: AsRef<Path>
 	{
@@ -138,16 +161,15 @@ impl Prefs {
 			.create_new(true)
 			.open(path)
 			.with_context(|| format!(
-				"Failed to create prefs file: {}",
+				"Failed to create config file: {}",
 				path.display()))?;
 		self.write_to_file(file)
-			.context("Failed to write prefs file")?;
+			.context("Failed to write config file")?;
 		Ok(())
 	}
 
 	/// Write the `Prefs` into the file is was loaded from. Returns true if the
 	/// data was written.
-	#[tracing::instrument(skip_all, err)]
 	pub fn write_to_load_path(&self) -> Result<bool, Error> {
 		match self.load_status.load_path() {
 			Some(path) => {
@@ -160,60 +182,88 @@ impl Prefs {
 
 	/// Write the `Prefs` into a new file using the load path. Returns true
 	/// if the data was written.
-	#[tracing::instrument(skip_all, err)]
 	pub fn write_to_load_path_if_new(&self) -> Result<bool, Error> {
 		match self.load_status.load_path() {
 			Some(path) => {
 				self.write_to_path_if_new(path)?;
 				Ok(true)
 			},
-			None => Ok(false)    
+			None => Ok(false)
 		}
 	}
 
 	/// Constructs a new `Prefs` with options parsed from the given file.
-	#[tracing::instrument(skip_all, err)]
+	///
+	/// Each file format will be tried in order, and the first to succed will be
+	/// returned.
 	pub fn read_from_file(mut file: File) -> Result<Self, Error>  {
-		Self::parse_ron_from_file(&mut file)
+		let res = Self::parse_toml_from_file(&mut file);
+		if res.is_ok() { return res; }
+
+		let next = Self::parse_ron_from_file(&mut file);
+		if next.is_ok() { return next; }
+
+		res
 	}
 
+	/// Constructs a new `Prefs` with options parsed from the given file and
+	/// format.
+	pub fn read_from_file_format(mut file: File, format: Format)
+		-> Result<Self, Error> 
+	{
+		match format {
+			Format::Ron  => Self::parse_ron_from_file(&mut file),
+			Format::Toml => Self::parse_toml_from_file(&mut file),
+		}
+	}
+
+	/// Write the `Prefs` into the given file.
+	pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
+		self.generate_ron_into_file(&mut file)
+	}
+
+	/// Write the `Prefs` into the given file and format.
+	pub fn write_to_file_format(&self, mut file: File, format: Format)
+		-> Result<(), Error>
+	{
+		match format {
+			Format::Ron  => self.generate_ron_into_file(&mut file),
+			Format::Toml => self.generate_toml_into_file(&mut file),
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// RON format processing.
+	////////////////////////////////////////////////////////////////////////////
+
 	/// Parses a `Prefs` from a file using the RON format.
-	#[tracing::instrument(skip_all, err)]
 	fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
 		let len = file.metadata()
 			.context("Failed to recover file metadata.")?
 			.len();
 		let mut buf = Vec::with_capacity(len.try_into()?);
 		let _ = file.read_to_end(&mut buf)
-			.context("Failed to read prefs file")?;
+			.context("Failed to read config file")?;
 
 		Self::parse_ron_from_bytes(&buf[..])
 	}
 
 	/// Parses a `Prefs` from a buffer using the RON format.
-	#[tracing::instrument(skip_all, err)]
 	fn parse_ron_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
 		use ron::de::Deserializer;
 		let mut d = Deserializer::from_bytes(bytes)
 			.context("Failed deserializing RON file")?;
-		let prefs = Self::deserialize(&mut d)
+		let mut config = Self::deserialize(&mut d)
 			.context("Failed parsing RON file")?;
 		d.end()
 			.context("Failed parsing RON file")?;
-
-		Ok(prefs)
-	}
-
-	/// Write the `Prefs` into the given file.
-	#[tracing::instrument(skip_all, err)]
-	pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
-		self.generate_ron_into_file(&mut file)
+		config.load_status.set_format(Format::Ron);
+		Ok(config) 
 	}
 
 	/// Parses a `Prefs` from a file using the RON format.
-	#[tracing::instrument(skip_all, err)]
 	fn generate_ron_into_file(&self, file: &mut File) -> Result<(), Error> {
-		tracing::debug!("Serializing & writing Prefs file.");
+		tracing::debug!("Serializing & writing Prefs file (RON).");
 		let pretty = ron::ser::PrettyConfig::new()
 			.depth_limit(2)
 			.separate_tuple_members(true)
@@ -229,14 +279,50 @@ impl Prefs {
 	}
 
 	////////////////////////////////////////////////////////////////////////////
-	// Default constructors for serde.
+	// TOML format processing.
 	////////////////////////////////////////////////////////////////////////////
 
+	/// Parses a `Prefs` from a file using the TOML format.
+	fn parse_toml_from_file(file: &mut File) -> Result<Self, Error> {
+		let len = file.metadata()
+			.context("Failed to recover file metadata.")?
+			.len();
+		let mut buf = Vec::with_capacity(len.try_into()?);
+		let _ = file.read_to_end(&mut buf)
+			.context("Failed to read config file")?;
+
+		Self::parse_toml_from_bytes(&buf[..])
+	}
+
+	/// Parses a `Prefs` from a buffer using the TOML format.
+	fn parse_toml_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+		let mut config: Self = toml::from_slice(bytes)
+			.context("Failed deserializing TOML file")?;
+		config.load_status.set_format(Format::Toml);
+
+		Ok(config) 
+	}
+
+	/// Parses a `Prefs` from a file using the TOML format.
+	fn generate_toml_into_file(&self, file: &mut File) -> Result<(), Error> {
+		tracing::debug!("Serializing & writing Prefs file (TOML).");
+		let s = toml::to_string(&self)
+			.context("Failed to serialize TOML file")?;
+		let mut writer = BufWriter::new(file);
+		writer.write_all(s.as_bytes())
+			.context("Failed to write TOML file")?;
+		writer.flush()
+			.context("Failed to flush file buffer")
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+	// Default constructors for serde.
+	////////////////////////////////////////////////////////////////////////////
 }
 
 impl std::fmt::Display for Prefs {
 	fn fmt(&self, _fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		Ok(())   
+
+		Ok(())
 	}
 }
-

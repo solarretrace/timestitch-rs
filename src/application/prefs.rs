@@ -31,7 +31,7 @@ use std::path::Path;
 ////////////////////////////////////////////////////////////////////////////////
 // Prefs
 ////////////////////////////////////////////////////////////////////////////////
-/// Application configuration data. Configures the logger, window, renderer,
+/// Application prefsuration data. Configures the logger, window, renderer,
 /// application limits, and behaviors.
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
@@ -125,11 +125,11 @@ impl Prefs {
 		let path = path.as_ref();
 		let file = File::open(path)
 			.with_context(|| format!(
-				"Failed to open config file for reading: {}",
+				"Failed to open prefs file for reading: {}",
 				path.display()))?;
-		let mut config = Self::read_from_file(file)?;
-		config.set_load_path(path);
-		Ok(config)
+		let mut prefs = Self::read_from_file(file)?;
+		prefs.set_load_path(path);
+		Ok(prefs)
 	}
 
 	/// Open a file at the given path and write the `Prefs` into it.
@@ -143,10 +143,10 @@ impl Prefs {
 			.create(true)
 			.open(path)
 			.with_context(|| format!(
-				"Failed to create/open config file for writing: {}",
+				"Failed to create/open prefs file for writing: {}",
 				path.display()))?;
 		self.write_to_file(file)
-			.context("Failed to write config file")?;
+			.context("Failed to write prefs file")?;
 		Ok(())
 	}
 	
@@ -161,10 +161,10 @@ impl Prefs {
 			.create_new(true)
 			.open(path)
 			.with_context(|| format!(
-				"Failed to create config file: {}",
+				"Failed to create prefs file: {}",
 				path.display()))?;
 		self.write_to_file(file)
-			.context("Failed to write config file")?;
+			.context("Failed to write prefs file")?;
 		Ok(())
 	}
 
@@ -243,7 +243,7 @@ impl Prefs {
 			.len();
 		let mut buf = Vec::with_capacity(len.try_into()?);
 		let _ = file.read_to_end(&mut buf)
-			.context("Failed to read config file")?;
+			.context("Failed to read prefs file")?;
 
 		Self::parse_ron_from_bytes(&buf[..])
 	}
@@ -253,12 +253,12 @@ impl Prefs {
 		use ron::de::Deserializer;
 		let mut d = Deserializer::from_bytes(bytes)
 			.context("Failed deserializing RON file")?;
-		let mut config = Self::deserialize(&mut d)
+		let mut prefs = Self::deserialize(&mut d)
 			.context("Failed parsing RON file")?;
 		d.end()
 			.context("Failed parsing RON file")?;
-		config.load_status.set_format(Format::Ron);
-		Ok(config) 
+		prefs.load_status.set_format(Format::Ron);
+		Ok(prefs) 
 	}
 
 	/// Parses a `Prefs` from a file using the RON format.
@@ -289,18 +289,18 @@ impl Prefs {
 			.len();
 		let mut buf = Vec::with_capacity(len.try_into()?);
 		let _ = file.read_to_end(&mut buf)
-			.context("Failed to read config file")?;
+			.context("Failed to read prefs file")?;
 
 		Self::parse_toml_from_bytes(&buf[..])
 	}
 
 	/// Parses a `Prefs` from a buffer using the TOML format.
 	fn parse_toml_from_bytes(bytes: &[u8]) -> Result<Self, Error> {
-		let mut config: Self = toml::from_slice(bytes)
+		let mut prefs: Self = toml::from_slice(bytes)
 			.context("Failed deserializing TOML file")?;
-		config.load_status.set_format(Format::Toml);
+		prefs.load_status.set_format(Format::Toml);
 
-		Ok(config) 
+		Ok(prefs) 
 	}
 
 	/// Parses a `Prefs` from a file using the TOML format.

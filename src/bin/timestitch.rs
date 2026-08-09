@@ -143,6 +143,7 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
         },
     };
     event!(Level::DEBUG, "{:#?}", prefs);
+    println!("{:?}", prefs);
 
 
     Ok(())

@@ -44,7 +44,7 @@ pub struct Entry {
 #[derive(Serialize, Deserialize)]
 pub enum MatchSource {
     Default,
-    Name {
+    Path {
         group: usize
     },
     Content {
@@ -58,7 +58,7 @@ pub enum MatchSource {
 #[derive(Serialize, Deserialize)]
 pub enum MatchSourceAttribute {
     Default(MatchFormat),
-    Name {
+    Path {
         group: usize,
         format: MatchFormat,
     },

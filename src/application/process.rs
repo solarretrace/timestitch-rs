@@ -7,7 +7,6 @@
 //! Data processing module.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // Internal library imports.
 use crate::application::Config;
 use crate::application::Prefs;
@@ -31,6 +30,13 @@ use std::path::Path;
 use std::path::PathBuf;
 
 
+////////////////////////////////////////////////////////////////////////////////
+// process_files
+////////////////////////////////////////////////////////////////////////////////
+/// Reads `Entry`s from an iterator of files according to the `Entry` data
+/// schema provided by `Prefs`.
+///
+/// This is the main data extraction function of the application.
 pub fn process_files<'a, I>(
     _config: Config,
     prefs: Prefs,
@@ -40,26 +46,34 @@ pub fn process_files<'a, I>(
 {
     // Compile matchers.
     let re_all: Regex = Regex::new(".*").unwrap();
-    let path_matcher = prefs.path_matcher
+    let path_matcher = prefs
+        .path_matcher
         .as_ref()
         .map(|m| Regex::new(m))
         .transpose()?;
-    let content_split = prefs.content_split
+    let content_split = prefs
+        .content_split
         .as_ref()
         .map(|m| Regex::new(m))
         .transpose()?;
-    let content_line_matchers = prefs.content_line_matchers
+    let content_line_matchers = prefs
+        .content_line_matchers
         .iter()
-        .map(|matcher| matcher.as_deref().map(Regex::new).unwrap_or(Ok(re_all.clone())))
+        .map(|matcher| matcher
+            .as_deref()
+            .map(Regex::new)
+            .unwrap_or(Ok(re_all.clone())))
         .collect::<Result<Vec<_>, _>>()?;
 
     let mut entries = Vec::new();
     for path in paths {
         let path_str = path.to_string_lossy();
-        let path_captures = path_matcher.as_ref()
+        let path_captures = path_matcher
+            .as_ref()
             .unwrap_or(&re_all)
             .captures(&path_str)
             .expect("construct path capture groups");
+
         let contents = get_file_contents(path)?;
         for content in split_contents(&contents, content_split.as_ref()) {
             let line_captures: Vec<Option<_>> = content.lines()
@@ -70,7 +84,7 @@ pub fn process_files<'a, I>(
             // Extract the Entry ID.
             let id = match prefs.entry_id_source {
                 MatchSource::Default => entries.len().try_into()?,
-                MatchSource::Name { group } => {
+                MatchSource::Path { group } => {
                     path_captures
                         .get(group)
                         .ok_or(anyhow!("invalid path capture group"))?
@@ -93,7 +107,7 @@ pub fn process_files<'a, I>(
             // Extract the Entry TimeInterval.
             let time = match prefs.entry_time_source {
                 MatchSource::Default => TimeInterval::unknown(),
-                MatchSource::Name { group } => {
+                MatchSource::Path { group } => {
                     path_captures
                         .get(group)
                         .ok_or(anyhow!("invalid path capture group"))?
@@ -120,7 +134,7 @@ pub fn process_files<'a, I>(
             let source_ref = match prefs.entry_ref_source {
                 None          |
                 Some(MatchSource::Default) => String::new().into_boxed_str(),
-                Some(MatchSource::Name { group }) => {
+                Some(MatchSource::Path { group }) => {
                     path_captures
                         .get(group)
                         .ok_or(anyhow!("invalid path capture group"))?
@@ -149,7 +163,7 @@ pub fn process_files<'a, I>(
                     MatchSourceAttribute::Default(format) => {
                         format.default_dyn()
                     },
-                    MatchSourceAttribute::Name { group, format } => {
+                    MatchSourceAttribute::Path { group, format } => {
                         format.parse_dyn(
                             path_captures
                                 .get(group)
@@ -187,7 +201,7 @@ pub fn process_files<'a, I>(
 }
 
 
-
+/// Reads the file contents from the given `Path` into a string.
 fn get_file_contents<P>(path: P) -> Result<Box<str>, Error> 
     where P: AsRef<Path>
 {
@@ -206,7 +220,8 @@ fn get_file_contents<P>(path: P) -> Result<Box<str>, Error>
         .map(|s| s.into_boxed_str())
 }
 
-
+/// Splits the given string using the provided `Regex`, or returns it unmodified
+/// if no regex is provided.
 fn split_contents<'a>(contents: &'a str, content_split: Option<&Regex>)
     -> impl Iterator<Item=&'a str>
 {

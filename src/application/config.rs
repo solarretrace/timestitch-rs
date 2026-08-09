@@ -13,6 +13,7 @@ use crate::application::Format;
 use crate::application::TraceConfig;
 
 // External library imports.
+use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Error;
 use serde::Deserialize;
@@ -255,8 +256,11 @@ impl Config {
 	}
 
 	/// Write the `Config` into the given file.
-	pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
-		self.generate_ron_into_file(&mut file)
+	pub fn write_to_file(&self, file: File) -> Result<(), Error> {
+		let format = self.load_status
+			.format()
+			.ok_or(anyhow!("no output format specified"))?;
+		self.write_to_file_format(file, format)
 	}
 
 	/// Write the `Config` into the given file and format.

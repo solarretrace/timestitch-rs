@@ -17,6 +17,7 @@ use crate::MatchSourceAttribute;
 // External library imports.
 use anyhow::Context as _;
 use anyhow::Error;
+use anyhow::anyhow;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -238,8 +239,11 @@ impl Prefs {
 	}
 
 	/// Write the `Prefs` into the given file.
-	pub fn write_to_file(&self, mut file: File) -> Result<(), Error> {
-		self.generate_ron_into_file(&mut file)
+	pub fn write_to_file(&self, file: File) -> Result<(), Error> {
+		let format = self.load_status
+			.format()
+			.ok_or(anyhow!("no output format specified"))?;
+		self.write_to_file_format(file, format)
 	}
 
 	/// Write the `Prefs` into the given file and format.

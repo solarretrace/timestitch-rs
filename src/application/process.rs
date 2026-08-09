@@ -11,6 +11,7 @@
 use crate::application::Config;
 use crate::application::Prefs;
 use crate::Entry;
+use crate::DataSource;
 use crate::MatchSource;
 use crate::MatchSourceAttribute;
 use crate::TimeInterval;
@@ -27,7 +28,6 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read as _;
 use std::path::Path;
-use std::path::PathBuf;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +128,7 @@ pub fn process_files<'a, I>(
             };
 
             // Extract the Entry source file.
-            let source_path: PathBuf = path.into();
+            let source_path = DataSource(path.into());
 
             // Extract the Entry source ref.
             let source_ref = match prefs.entry_ref_source {
@@ -160,15 +160,12 @@ pub fn process_files<'a, I>(
             let mut attributes = BTreeMap::new();
             for (key, msa) in prefs.entry_attribute_sources.iter() {
                 let attribute = match *msa {
-                    MatchSourceAttribute::Default(format) => {
-                        format.default_dyn()
-                    },
                     MatchSourceAttribute::Path { group, format } => {
                         format.parse_dyn(
                             path_captures
                                 .get(group)
                                 .ok_or(anyhow!("invalid path capture group"))?
-                                .as_str())
+                                .as_str())?
                             
                     },
                     MatchSourceAttribute::Content { line, group, format } => {
@@ -180,7 +177,7 @@ pub fn process_files<'a, I>(
                                 .ok_or(anyhow!("line capture match failed"))?
                                 .get(group)
                                 .ok_or(anyhow!("invalid line capture group"))?
-                                .as_str())
+                                .as_str())?
                     },
                 };
                 attributes.insert(key.clone(), attribute);

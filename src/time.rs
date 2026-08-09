@@ -42,6 +42,7 @@ impl FromStr for TimeInterval {
     type Err = TimeIntervalParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        
         Err(TimeIntervalParseError {})
     }
 }

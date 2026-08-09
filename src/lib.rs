@@ -7,13 +7,11 @@
 //! Library interface module.
 ////////////////////////////////////////////////////////////////////////////////
 
-
+// Internal modules.
 pub mod application;
-mod attribute;
 mod record;
 mod time;
 
-
-pub use attribute::*;
+// Exports.
 pub use record::*;
 pub use time::*;

@@ -380,6 +380,7 @@ impl Config {
 
 impl std::fmt::Display for Config {
 	fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		writeln!(fmt, "Config:")?;
 		writeln!(fmt, "\ttrace_config.trace_output_path: {:?}",
 			self.trace_config.trace_output_path)?;
 		writeln!(fmt, "\ttrace_config.ansi_colors: {:?}",

@@ -93,6 +93,9 @@ pub enum MatchSource {
     },
 }
 
+impl Default for MatchSource {
+    fn default() -> Self { MatchSource::Default }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]

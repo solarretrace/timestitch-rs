@@ -44,23 +44,37 @@ pub struct Prefs {
 	/// The Prefs file's load status.
 	#[serde(skip)]
 	load_status: LoadStatus,
+
 	/// A regular expression for capturing entry data from a file path.
+	#[serde(default)]
 	pub path_matcher: Option<Box<str>>,
+
 	/// A regular expression for splitting files into multiple entry sources.
+	#[serde(default)]
 	pub content_split: Option<Box<str>>,
+
 	/// Regular expressions for capturing entry data from the lines of an entry
 	/// source.
+	#[serde(default)]
 	pub content_line_matchers: Vec<Option<Box<str>>>,
+
 	/// The method to use for resolving an `Entry` ID from an entry source.
+	#[serde(default)]
 	pub entry_id_source: MatchSource,
+
 	/// The method to use for resolving an `Entry` `TimeInterval` from an entry
 	/// source.
+	#[serde(default)]
 	pub entry_time_source: MatchSource,
+
 	/// The method to use for resolving an `Entry` source reference from an
 	/// entry source.
+	#[serde(default)]
 	pub entry_ref_source: Option<MatchSource>,
+
 	/// The `Entry` attribute keys and methods for resolving them from an entry
 	/// source.
+	#[serde(default)]
 	pub entry_attribute_sources: BTreeMap<Box<str>, MatchSourceAttribute>,
 }
 
@@ -348,10 +362,6 @@ impl Prefs {
 		writer.flush()
 			.context("Failed to flush file buffer")
 	}
-
-	////////////////////////////////////////////////////////////////////////////
-	// Default constructors for serde.
-	////////////////////////////////////////////////////////////////////////////
 }
 
 impl std::fmt::Display for Prefs {

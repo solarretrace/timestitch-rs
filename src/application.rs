@@ -13,6 +13,7 @@ mod command;
 mod config;
 mod load_status;
 mod prefs;
+mod process;
 mod trace;
 
 
@@ -20,5 +21,6 @@ mod trace;
 pub use command::*;
 pub use config::*;
 pub use load_status::*;
-pub use trace::*;
 pub use prefs::*;
+pub use process::*;
+pub use trace::*;

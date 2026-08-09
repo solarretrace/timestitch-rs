@@ -11,6 +11,8 @@
 use crate::application::LoadStatus;
 use crate::application::Format;
 use crate::application::Config;
+use crate::MatchSource;
+use crate::MatchSourceAttribute;
 
 // External library imports.
 use anyhow::Context as _;
@@ -19,6 +21,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 // Standard library imports.
+use std::collections::BTreeMap;
 use std::convert::TryInto as _;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -40,6 +43,15 @@ pub struct Prefs {
 	/// The Prefs file's load status.
 	#[serde(skip)]
 	load_status: LoadStatus,
+
+	pub path_matcher: Option<Box<str>>,
+	pub content_split: Option<Box<str>>,
+	pub content_line_matchers: Vec<Option<Box<str>>>,
+
+	pub entry_id_source: MatchSource,
+	pub entry_time_source: MatchSource,
+	pub entry_ref_source: Option<MatchSource>,
+	pub entry_attribute_sources: BTreeMap<Box<str>, MatchSourceAttribute>,
 }
 
 
@@ -56,6 +68,14 @@ impl Prefs {
 		Self {
 			load_status: LoadStatus::default()
 				.with_format(Config::DEFAULT_PREFS_FORMAT),
+			path_matcher: None,
+			content_split: None,
+			content_line_matchers: Vec::new(),
+
+			entry_id_source: MatchSource::Default,
+			entry_time_source: MatchSource::Default,
+			entry_ref_source: None,
+			entry_attribute_sources: BTreeMap::new(),
 		}
 	}
 
@@ -239,7 +259,7 @@ impl Prefs {
 	/// Parses a `Prefs` from a file using the RON format.
 	fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
 		let len = file.metadata()
-			.context("Failed to recover file metadata.")?
+			.context("Failed to read file metadata.")?
 			.len();
 		let mut buf = Vec::with_capacity(len.try_into()?);
 		let _ = file.read_to_end(&mut buf)
@@ -285,7 +305,7 @@ impl Prefs {
 	/// Parses a `Prefs` from a file using the TOML format.
 	fn parse_toml_from_file(file: &mut File) -> Result<Self, Error> {
 		let len = file.metadata()
-			.context("Failed to recover file metadata.")?
+			.context("Failed to read file metadata.")?
 			.len();
 		let mut buf = Vec::with_capacity(len.try_into()?);
 		let _ = file.read_to_end(&mut buf)

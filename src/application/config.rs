@@ -276,7 +276,7 @@ impl Config {
 	/// Parses a `Config` from a file using the RON format.
 	fn parse_ron_from_file(file: &mut File) -> Result<Self, Error> {
 		let len = file.metadata()
-			.context("Failed to recover file metadata.")?
+			.context("Failed to read file metadata.")?
 			.len();
 		let mut buf = Vec::with_capacity(len.try_into()?);
 		let _ = file.read_to_end(&mut buf)
@@ -322,7 +322,7 @@ impl Config {
 	/// Parses a `Config` from a file using the TOML format.
 	fn parse_toml_from_file(file: &mut File) -> Result<Self, Error> {
 		let len = file.metadata()
-			.context("Failed to recover file metadata.")?
+			.context("Failed to read file metadata.")?
 			.len();
 		let mut buf = Vec::with_capacity(len.try_into()?);
 		let _ = file.read_to_end(&mut buf)

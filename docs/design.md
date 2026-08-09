@@ -8,3 +8,16 @@ There are two use-cases supported by this tool:
 
 To support both of these, we want to organize the inputs and process them into a uniform intermediate representation. From this representation, we can generate the desired output.
 
+The following steps are an outline of how things should behave:
+
+1. Process files
+	+ File names are processed by NameMatcher
+	+ File contents are processed by either deserialization or FileMatcher if deserialization fails.
+	+ Matcher parameters are provided in the Prefs file.
+	+ The result is a list of entries.
+2. Process entries
+	+ Entries are sorted and wrapped for rendering.
+	+ Sort keys are provided by the Prefs file.
+3. Write entries
+	+ Output is written by table-gen-rs.
+

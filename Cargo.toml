@@ -28,13 +28,15 @@ anyhow = "1.0"
 chrono = "0.4"
 clap = { version = "4.6", features = ["derive", "suggestions", "color", "cargo"] }
 colored = "3.1"
+either = "1.17.0"
+regex = "1.13"
 ron = "0.12"
+rustc_version_runtime = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 toml = "1.1"
 tracing = { version = "0.1.31" }
 tracing-appender = "0.2.0"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
-rustc_version_runtime = "0.3"
 
 # The development profile, used for `cargo build`
 [profile.dev]

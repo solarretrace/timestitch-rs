@@ -8,10 +8,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
+use timestitch::application::CommandOptions;
 use timestitch::application::Config;
 use timestitch::application::Prefs;
+use timestitch::application::process_files;
+use timestitch::application::write_table;
 use timestitch::application::TraceGuard;
-use timestitch::application::CommandOptions;
 
 // External library imports.
 use anyhow::Context;
@@ -143,9 +145,16 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 		},
 	};
 	event!(Level::DEBUG, "{:#?}", prefs);
+
+	
 	println!("{}", prefs);
+	let entries = process_files(
+		&config,
+		&prefs,
+		opts.files.iter().map(|p| p.as_path()))?;
 
-
-	Ok(())
+	println!("{:?}", entries);
+	let mut out = std::io::stdout();
+	write_table(&config, &prefs, &mut out, entries.into_iter())
 }
 

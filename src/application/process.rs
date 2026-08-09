@@ -38,8 +38,8 @@ use std::path::Path;
 ///
 /// This is the main data extraction function of the application.
 pub fn process_files<'a, I>(
-	_config: Config,
-	prefs: Prefs,
+	_config: &Config,
+	prefs: &Prefs,
 	paths: I)
 	-> Result<Vec<Entry>, Error>
 	where I: IntoIterator<Item=&'a Path>

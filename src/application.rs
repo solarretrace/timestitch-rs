@@ -14,6 +14,7 @@ mod config;
 mod load_status;
 mod prefs;
 mod process;
+mod table;
 mod trace;
 
 
@@ -23,4 +24,5 @@ pub use config::*;
 pub use load_status::*;
 pub use prefs::*;
 pub use process::*;
+pub use table::*;
 pub use trace::*;

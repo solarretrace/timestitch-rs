@@ -43,38 +43,38 @@ pub type EntryId = u64;
 /// A indivisible record entry.
 #[derive(Debug)]
 pub struct Entry {
-    /// The entries unique identifier.
-    pub id: EntryId,
-    /// The time interval over which the entry is valid.
-    pub time: TimeInterval,
-    /// The file source of the entry.
-    
-    pub source_path: DataSource,
-    /// The reference source of the entry.
-    pub source_ref: Box<str>,
-    /// The entry contents.
-    pub attributes: BTreeMap<Box<str>, Box<dyn Attribute + 'static>>,
+	/// The entries unique identifier.
+	pub id: EntryId,
+	/// The time interval over which the entry is valid.
+	pub time: TimeInterval,
+	/// The file source of the entry.
+	
+	pub source_path: DataSource,
+	/// The reference source of the entry.
+	pub source_ref: Box<str>,
+	/// The entry contents.
+	pub attributes: BTreeMap<Box<str>, Box<dyn Attribute + 'static>>,
 }
 
 
 impl Row for Entry {
-    fn len(&self) -> usize {
-        4 + self.attributes.len()
-    }
+	fn len(&self) -> usize {
+		4 + self.attributes.len()
+	}
 
-    fn cell(&self, col_idx: usize) -> Option<&dyn Cell> {
-        match col_idx {
-            0 => Some(&self.id),
-            1 => Some(&1000),
-            2 => Some(&self.source_path),
-            3 => Some(&self.source_ref),
-            n =>  n.checked_sub(4)
-                .and_then(|n| self.attributes
-                    .values()
-                    .nth(n)
-                    .map(|a| a.as_ref() as &dyn Cell)),
-        }
-    }
+	fn cell(&self, col_idx: usize) -> Option<&dyn Cell> {
+		match col_idx {
+			0 => Some(&self.id),
+			1 => Some(&1000),
+			2 => Some(&self.source_path),
+			3 => Some(&self.source_ref),
+			n =>  n.checked_sub(4)
+				.and_then(|n| self.attributes
+					.values()
+					.nth(n)
+					.map(|a| a.as_ref() as &dyn Cell)),
+		}
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,51 +83,51 @@ impl Row for Entry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub enum MatchSource {
-    Default,
-    Path {
-        group: usize
-    },
-    Content {
-        line: usize,
-        group: usize
-    },
+	Default,
+	Path {
+		group: usize
+	},
+	Content {
+		line: usize,
+		group: usize
+	},
 }
 
 impl Default for MatchSource {
-    fn default() -> Self { MatchSource::Default }
+	fn default() -> Self { MatchSource::Default }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub enum MatchSourceAttribute {
-    Path {
-        group: usize,
-        format: MatchFormat,
-    },
-    Content {
-        line: usize,
-        group: usize,
-        format: MatchFormat,
-    },
+	Path {
+		group: usize,
+		format: MatchFormat,
+	},
+	Content {
+		line: usize,
+		group: usize,
+		format: MatchFormat,
+	},
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub enum MatchFormat {
-    U64,
-    Time,
-    Text,
+	U64,
+	Time,
+	Text,
 }
 
 impl MatchFormat {
-    pub fn parse_dyn(self, s: &str) -> Result<Box<dyn Attribute>, Error> {
-        use MatchFormat::*;
-        match self {
-            U64 => Ok(Box::new(s.parse::<u64>()?)),
-            Time => todo!(),
-            Text => Ok(Box::new(s.to_string().into_boxed_str())),
-        }
-    }
+	pub fn parse_dyn(self, s: &str) -> Result<Box<dyn Attribute>, Error> {
+		use MatchFormat::*;
+		match self {
+			U64 => Ok(Box::new(s.parse::<u64>()?)),
+			Time => todo!(),
+			Text => Ok(Box::new(s.to_string().into_boxed_str())),
+		}
+	}
 }
 
 
@@ -138,14 +138,14 @@ impl MatchFormat {
 pub struct DataSource(pub PathBuf);
 
 impl std::fmt::Display for DataSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.0.display(), f)
-    }
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		std::fmt::Display::fmt(&self.0.display(), f)
+	}
 }
 
 impl PartialOrd for DataSource {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.as_os_str().partial_cmp(other.0.as_os_str())
-    }
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		self.0.as_os_str().partial_cmp(other.0.as_os_str())
+	}
 }
-    
+	

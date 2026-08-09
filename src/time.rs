@@ -23,38 +23,38 @@ use std::str::FromStr;
 #[derive(Deserialize, Serialize)]
 #[derive(Debug, Clone)]
 pub struct TimeInterval {
-    /// The start of the interval.
-    pub start: TimeBound,
-    /// The end of the interval.
-    pub end: TimeBound,
+	/// The start of the interval.
+	pub start: TimeBound,
+	/// The end of the interval.
+	pub end: TimeBound,
 }
 
 impl TimeInterval {
-    pub fn unknown() -> Self {
-        Self {
-            start: TimeBound::Unbounded,
-            end: TimeBound::Unbounded,
-        }
-    }
+	pub fn unknown() -> Self {
+		Self {
+			start: TimeBound::Unbounded,
+			end: TimeBound::Unbounded,
+		}
+	}
 }
 
 impl FromStr for TimeInterval {
-    type Err = TimeIntervalParseError;
+	type Err = TimeIntervalParseError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        
-        Err(TimeIntervalParseError {})
-    }
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		
+		Err(TimeIntervalParseError {})
+	}
 }
 
 
 #[derive(Debug, Clone, Copy)]
 pub struct TimeIntervalParseError {}
-    
+	
 impl std::fmt::Display for TimeIntervalParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        format!("TimeIntervalParseError").fmt(f)
-    }
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		format!("TimeIntervalParseError").fmt(f)
+	}
 }
 
 impl std::error::Error for TimeIntervalParseError {}
@@ -63,30 +63,30 @@ impl std::error::Error for TimeIntervalParseError {}
 #[derive(Deserialize, Serialize)]
 #[derive(Debug, Clone)]
 pub enum TimeBound {
-    /// An unknwon time bound.
-    Unbounded,
-    /// A timebound coincident with the start or end of another entry.
-    BoundRef(EntryId, Endpoint),
-    /// A timebound coincident with the another entrie's interval.
-    IntervalRef(EntryId),
-    /// An time bound estimated to lie within the given period.
-    Est(Period)
+	/// An unknwon time bound.
+	Unbounded,
+	/// A timebound coincident with the start or end of another entry.
+	BoundRef(EntryId, Endpoint),
+	/// A timebound coincident with the another entrie's interval.
+	IntervalRef(EntryId),
+	/// An time bound estimated to lie within the given period.
+	Est(Period)
 }
 
 
 #[derive(Deserialize, Serialize)]
 #[derive(Debug, Clone)]
 pub enum Endpoint {
-    Start,
-    End,
+	Start,
+	End,
 }
 
 
 #[derive(Deserialize, Serialize)]
 #[derive(Debug, Clone)]
 pub struct Period {
-    earliest: Time,
-    latest: Time,
+	earliest: Time,
+	latest: Time,
 }
 
 pub type Time = u128;

@@ -5,6 +5,8 @@
 // See license-mit.md and license-apache.md for details.
 ////////////////////////////////////////////////////////////////////////////////
 //! Record time types.
+//!
+//! 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
@@ -16,21 +18,49 @@ use serde::Serialize;
 
 // Standard Library imports.
 use std::str::FromStr;
+use std::fmt::Display;
+use std::fmt::Debug;
 
 
+////////////////////////////////////////////////////////////////////////////////
+// Calendar
+////////////////////////////////////////////////////////////////////////////////
+/// A representation of a time period suitable for potentially imprecise moments
+/// in time.
+pub trait Calendar: Debug + Display 
+    + PartialOrd + PartialEq
+    + FromStr + Into<TimeInterval<Self>>
+    + 'static
+{
+	/// The earliest point of the calendar period, resolved to the highest
+	/// granularity supported by the calendar.
+	fn earliest(&self) -> Self;
 
-/// An interval of time.
-#[derive(Deserialize, Serialize)]
-#[derive(Debug, Clone)]
-pub struct TimeInterval {
-	/// The start of the interval.
-	pub start: TimeBound,
-	/// The end of the interval.
-	pub end: TimeBound,
+	/// The latest point of the calendar period, resolved to the highest
+	/// granularity supported by the calendar.
+	fn latest(&self) -> Self;
 }
 
-impl TimeInterval {
-	pub fn unknown() -> Self {
+
+////////////////////////////////////////////////////////////////////////////////
+// TimeInterval
+////////////////////////////////////////////////////////////////////////////////
+/// An interval of time represented in some calendar.
+#[derive(Deserialize, Serialize)]
+#[derive(Debug, Clone)]
+pub struct TimeInterval<C> {
+	/// The start of the interval.
+	pub start: TimeBound<C>,
+	/// The end of the interval.
+	pub end: TimeBound<C>,
+}
+
+impl<C> TimeInterval<C>
+	where C: Calendar
+{
+	
+
+	pub const fn unknown() -> Self {
 		Self {
 			start: TimeBound::Unbounded,
 			end: TimeBound::Unbounded,
@@ -38,42 +68,40 @@ impl TimeInterval {
 	}
 }
 
-impl FromStr for TimeInterval {
-	type Err = TimeIntervalParseError;
+impl<C> FromStr for TimeInterval<C> 
+	where
+		C: Calendar,
+		<C as std::str::FromStr>::Err: std::error::Error + Send + Sync + 'static
+{
+	type Err = <C as FromStr>::Err;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		
-		Err(TimeIntervalParseError {})
+		Ok(Self::from(<C as FromStr>::from_str(s)?.into()))
 	}
 }
 
-
-#[derive(Debug, Clone, Copy)]
-pub struct TimeIntervalParseError {}
-	
-impl std::fmt::Display for TimeIntervalParseError {
+impl<C> Display for TimeInterval<C>
+	where C: Calendar
+{
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		format!("TimeIntervalParseError").fmt(f)
+		Display::fmt(&format!("{} - {}", self.start, self.end), f)
 	}
 }
 
-impl std::error::Error for TimeIntervalParseError {}
+impl<C> PartialEq for TimeInterval<C> {
+	fn eq(&self, other: &Self) -> bool {
+		false
+	}
+}
 
-
-#[derive(Deserialize, Serialize)]
-#[derive(Debug, Clone)]
-pub enum TimeBound {
-	/// An unknwon time bound.
-	Unbounded,
-	/// A timebound coincident with the start or end of another entry.
-	BoundRef(EntryId, Endpoint),
-	/// A timebound coincident with the another entrie's interval.
-	IntervalRef(EntryId),
-	/// An time bound estimated to lie within the given period.
-	Est(Period)
+impl<C> PartialOrd for TimeInterval<C> {
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+		None
+	}
 }
 
 
+/// The endpoint type of a `TimeInterval`.
 #[derive(Deserialize, Serialize)]
 #[derive(Debug, Clone)]
 pub enum Endpoint {
@@ -81,15 +109,31 @@ pub enum Endpoint {
 	End,
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+// TimeBound
+////////////////////////////////////////////////////////////////////////////////
+/// A `TimeInterval` bound represented in some calendar.
 #[derive(Deserialize, Serialize)]
 #[derive(Debug, Clone)]
-pub struct Period {
-	earliest: Time,
-	latest: Time,
+pub enum TimeBound<C> {
+	/// An unknwon time bound.
+	Unbounded,
+	/// An time bound estimated to lie within the given period.
+	Between { earliest: C, latest: C },
+	/// A timebound coincident with the start or end of another entry.
+	BoundRef { id: EntryId, bound: Endpoint },
+	/// A timebound coincident with the another entrie's interval.
+	IntervalRef { id: EntryId },
 }
 
-pub type Time = u128;
+impl<C> Display for TimeBound<C>
+	where C: Calendar
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		todo!()
+	}
+}
+
 
 
 // Zeller's congruence computes days of the week:
@@ -105,3 +149,6 @@ pub type Time = u128;
 //     local days=(Saturday Sunday Monday Tuesday Wednesday Thursday Friday)
 //     echo "${days[$h]}"
 // }
+
+
+

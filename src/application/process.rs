@@ -15,6 +15,7 @@ use crate::DataSource;
 use crate::MatchSource;
 use crate::MatchSourceAttribute;
 use crate::TimeInterval;
+use crate::Calendar;
 
 // External library imports.
 use anyhow::anyhow;
@@ -37,12 +38,15 @@ use std::path::Path;
 /// schema provided by `Prefs`.
 ///
 /// This is the main data extraction function of the application.
-pub fn process_files<'a, I>(
+pub fn process_files<'a, I, C>(
 	_config: &Config,
 	prefs: &Prefs,
 	paths: I)
-	-> Result<Vec<Entry>, Error>
-	where I: IntoIterator<Item=&'a Path>
+	-> Result<Vec<Entry<C>>, Error>
+	where
+		I: IntoIterator<Item=&'a Path>,
+		C: Calendar,
+		<C as std::str::FromStr>::Err: std::error::Error + Send + Sync + 'static
 {
 	// Compile matchers.
 	let re_all: Regex = Regex::new(".*").unwrap();
@@ -106,13 +110,13 @@ pub fn process_files<'a, I>(
 
 			// Extract the Entry TimeInterval.
 			let time = match prefs.entry_time_source {
-				MatchSource::Default => TimeInterval::unknown(),
+				MatchSource::Default => TimeInterval::<C>::unknown(),
 				MatchSource::Path { group } => {
 					path_captures
 						.get(group)
 						.ok_or(anyhow!("invalid path capture group"))?
 						.as_str()
-						.parse::<TimeInterval>()?
+						.parse::<TimeInterval<C>>()?
 				},
 				MatchSource::Content { line, group } => {
 					line_captures
@@ -123,7 +127,7 @@ pub fn process_files<'a, I>(
 						.get(group)
 						.ok_or(anyhow!("invalid line capture group"))?
 						.as_str()
-						.parse::<TimeInterval>()?
+						.parse::<TimeInterval<C>>()?
 				},
 			};
 

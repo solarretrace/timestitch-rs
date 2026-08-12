@@ -1,6 +1,6 @@
 [package]
 name = "timestitch"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
@@ -25,7 +25,7 @@ default = []
 # Required dependencies
 [dependencies]
 anyhow = "1.0"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.6", features = ["derive", "suggestions", "color", "cargo"] }
 colored = "3.1"
 either = "1.17.0"

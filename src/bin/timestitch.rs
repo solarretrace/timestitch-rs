@@ -14,6 +14,8 @@ use timestitch::application::Prefs;
 use timestitch::application::process_files;
 use timestitch::application::write_table;
 use timestitch::application::TraceGuard;
+use timestitch::GregorianProleptic;
+use timestitch::Entry;
 
 // External library imports.
 use anyhow::Context;
@@ -148,7 +150,7 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 
 	
 	println!("{}", prefs);
-	let entries = process_files(
+	let entries: Vec<Entry<GregorianProleptic>> = process_files(
 		&config,
 		&prefs,
 		opts.files.iter().map(|p| p.as_path()))?;

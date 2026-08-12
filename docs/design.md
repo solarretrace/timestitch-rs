@@ -21,3 +21,13 @@ The following steps are an outline of how things should behave:
 3. Write entries
 	+ Output is written by table-gen-rs.
 
+
+
+
+# Time measurement
+
+1. Each event is associated with a time interval.
+2. Time intervals must implement Cell (PartialOrd + Display)
+3. Time intervals are generic over the Calendar.
+4. Calendar may be real (via Chrono) or arbitrary (via Regex matching)
+5. Calendar times must be resolved to provide ordering, which is done against a list of entries.

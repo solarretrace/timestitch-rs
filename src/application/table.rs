@@ -11,6 +11,7 @@
 use crate::application::Config;
 use crate::application::Prefs;
 use crate::Entry;
+use crate::Calendar;
 
 // External library imports.
 use anyhow::Error;
@@ -26,15 +27,16 @@ use std::io::Write;
 // write_table
 ////////////////////////////////////////////////////////////////////////////////
 /// Writes an iterator of entries to the given output as a table.
-pub fn write_table<'a, W, I>(
+pub fn write_table<'a, W, I, C>(
     _config: &Config,
     _prefs: &Prefs,
     out: &mut W,
     entries: I)
     -> Result<(), Error>
     where
-        I: IntoIterator<Item=Entry>,
+        I: IntoIterator<Item=Entry<C>>,
         W: Write,
+        C: Calendar,
 {
     let mut table = Table::new_builder(entries, MarkdownGridRenderer::new())
         .finish();

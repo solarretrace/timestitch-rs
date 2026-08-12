@@ -9,6 +9,7 @@
 
 // Internal library imports.
 use crate::TimeInterval;
+use crate::Calendar;
 
 // External library imports.
 use anyhow::Error;
@@ -40,13 +41,14 @@ impl<T: Debug + Cell + 'static> Attribute for T {}
 /// The `Entry` record identifier type.
 pub type EntryId = u64;
 
+
 /// A indivisible record entry.
 #[derive(Debug)]
-pub struct Entry {
+pub struct Entry<C> {
 	/// The entries unique identifier.
 	pub id: EntryId,
 	/// The time interval over which the entry is valid.
-	pub time: TimeInterval,
+	pub time: TimeInterval<C>,
 	/// The file source of the entry.
 	
 	pub source_path: DataSource,
@@ -57,7 +59,9 @@ pub struct Entry {
 }
 
 
-impl Row for Entry {
+impl<C> Row for Entry<C> 
+	where C: Calendar
+{
 	fn len(&self) -> usize {
 		4 + self.attributes.len()
 	}
@@ -65,7 +69,7 @@ impl Row for Entry {
 	fn cell(&self, col_idx: usize) -> Option<&dyn Cell> {
 		match col_idx {
 			0 => Some(&self.id),
-			1 => Some(&1000),
+			1 => Some(&self.time),
 			2 => Some(&self.source_path),
 			3 => Some(&self.source_ref),
 			n =>  n.checked_sub(4)

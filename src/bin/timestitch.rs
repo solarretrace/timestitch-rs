@@ -16,6 +16,7 @@ use timestitch::application::write_table;
 use timestitch::application::TraceGuard;
 use timestitch::GregorianProleptic;
 use timestitch::Entry;
+use timestitch::CalendarSystem;
 
 // External library imports.
 use anyhow::Context;
@@ -150,13 +151,17 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 
 	
 	println!("{}", prefs);
-	let entries: Vec<Entry<GregorianProleptic>> = process_files(
-		&config,
-		&prefs,
-		opts.files.iter().map(|p| p.as_path()))?;
+	match prefs.calendar_system {
+		CalendarSystem::GregorianProleptic => {
+			let entries: Vec<Entry<GregorianProleptic>> = process_files(
+				&config,
+				&prefs,
+				opts.files.iter().map(|p| p.as_path()))?;
 
-	println!("{:?}", entries);
-	let mut out = std::io::stdout();
-	write_table(&config, &prefs, &mut out, entries.into_iter())
+			println!("{:?}", entries);
+			let mut out = std::io::stdout();
+			write_table(&config, &prefs, &mut out, entries.into_iter())
+		},
+	}
 }
 

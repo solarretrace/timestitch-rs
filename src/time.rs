@@ -41,13 +41,26 @@ pub trait Calendar: Debug + Display
 	fn latest(&self) -> Self;
 }
 
+/// Supported parseable calendar types.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Deserialize, Serialize)]
+pub enum CalendarSystem {
+	/// The gregorian proleptic calendar.
+	GregorianProleptic,
+}
+
+impl Default for CalendarSystem {
+	fn default() -> Self {
+		Self::GregorianProleptic
+	}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // TimeInterval
 ////////////////////////////////////////////////////////////////////////////////
 /// An interval of time represented in some calendar.
-#[derive(Deserialize, Serialize)]
 #[derive(Debug, Clone)]
+#[derive(Deserialize, Serialize)]
 pub struct TimeInterval<C> {
 	/// The start of the interval.
 	pub start: TimeBound<C>,

@@ -13,6 +13,7 @@ use crate::application::Format;
 use crate::application::Config;
 use crate::MatchSource;
 use crate::MatchSourceAttribute;
+use crate::CalendarSystem;
 
 // External library imports.
 use anyhow::Context as _;
@@ -76,6 +77,10 @@ pub struct Prefs {
 	/// source.
 	#[serde(default)]
 	pub entry_attribute_sources: BTreeMap<Box<str>, MatchSourceAttribute>,
+
+	/// The `CalendarSystem` to use for decoding & ordering times.
+	#[serde(default)]
+	pub calendar_system: CalendarSystem,
 }
 
 
@@ -101,6 +106,7 @@ impl Prefs {
 			entry_time_source: MatchSource::Default,
 			entry_ref_source: None,
 			entry_attribute_sources: BTreeMap::new(),
+			calendar_system: CalendarSystem::default(),
 		}
 	}
 
@@ -376,6 +382,7 @@ impl std::fmt::Display for Prefs {
 		writeln!(fmt, "\tentry_id_source: {:?}", self.entry_id_source)?;
 		writeln!(fmt, "\tentry_time_source: {:?}", self.entry_time_source)?;
 		writeln!(fmt, "\tentry_ref_source: {:?}", self.entry_ref_source)?;
+		writeln!(fmt, "\tcalendar_system: {:?}", self.calendar_system)?;
 		writeln!(fmt, "\tentry_attribute_sources: ")?;
 		for (k, v) in &self.entry_attribute_sources {
 			writeln!(fmt, "\t\t{:?} => {:?}", k, v)?;

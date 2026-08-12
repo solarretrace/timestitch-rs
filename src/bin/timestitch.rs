@@ -43,7 +43,7 @@ pub fn main() {
 		// Print errors to stderr and exit with error code.
 		colored::control::unset_override();
 		eprintln!("{:?}", err);
-
+		
 		let exit_code = match err.downcast::<clap::Error>()
 			.map(|e| e.kind())
 		{

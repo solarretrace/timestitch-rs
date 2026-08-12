@@ -15,8 +15,8 @@ use crate::Entry;
 // External library imports.
 use anyhow::Error;
 use anyhow::Context as _;
-use table_gen_render::MarkdownGridRenderer;
-use table_gen_core::Table;
+use table_gen_markdown::MarkdownGridRenderer;
+use table_gen::Table;
 
 // Standard library imports.
 use std::io::Write;

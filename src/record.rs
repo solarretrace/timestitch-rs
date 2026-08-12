@@ -14,8 +14,8 @@ use crate::TimeInterval;
 use anyhow::Error;
 use serde::Deserialize;
 use serde::Serialize;
-use table_gen_core::Row;
-use table_gen_core::Cell;
+use table_gen::Row;
+use table_gen::Cell;
 
 // Standard library imports.
 use std::collections::BTreeMap;

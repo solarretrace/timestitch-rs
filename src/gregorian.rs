@@ -16,6 +16,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use regex::Regex;
 pub use chrono::Weekday;
+pub use chrono::NaiveDate;
 pub use chrono::ParseWeekdayError;
 pub use chrono::Datelike as _;
 
@@ -55,7 +56,7 @@ pub enum GregorianProleptic {
 		/// An optional clock time resolution.
 		time: Option<ClockTime>,
 	},
-	/// The ISO week date: year, week number, day of week.
+	/// The ISO week date: year, week number (0-indexed), day of week.
 	Ywd {
 		/// The Gregorian proleptic calendar year.
 		year: i32,
@@ -66,22 +67,22 @@ pub enum GregorianProleptic {
 		/// An optional clock time resolution.
 		time: Option<ClockTime>,
 	},
-	/// The number of days since 00010101 in the Gregorian proleptic calendar.
+	/// The number of days since 0001-01-01 in the Gregorian proleptic calendar.
 	CeDay {
 		/// The index of the day relative to the start of the current era.
 		days: i32,
 		/// An optional clock time resolution.
 		time: Option<ClockTime>,
 	},
-	/// The number of days since 19700101 in the Gregorian proleptic calendar.
+	/// The number of days since 1970-01-01 in the Gregorian proleptic calendar.
 	EpochDay {
 		/// The index of the day relative to the start of the UNIX epoch.
 		days: i32,
 		/// An optional clock time resolution.
 		time: Option<ClockTime>,
 	},
-	/// The `n`th weekday of the month of the given year.
-	MonthWeekday {
+	/// The year, month, weekday, and index of that weekday within the month.
+	Ymwn {
 		/// The Gregorian proleptic calendar year.
 		year: i32,
 		/// The index of the month within the year.
@@ -138,7 +139,7 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			Yo { year, ordinal, time } => {
-				let dt = chrono::NaiveDate::from_yo_opt(year, ordinal)
+				let dt = NaiveDate::from_yo_opt(year, ordinal)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year,
@@ -149,8 +150,8 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			Ywd { year, week, weekday, time } => {
-				let weekday = weekday.unwrap_or(Weekday::Sun);
-				let dt = chrono::NaiveDate::from_isoywd_opt(year, week, weekday)
+				let weekday = weekday.unwrap_or(Weekday::Mon);
+				let dt = NaiveDate::from_isoywd_opt(year, week + 1, weekday)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year,
@@ -161,7 +162,7 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			CeDay { days, time } => {
-				let dt = chrono::NaiveDate::from_num_days_from_ce_opt(days)
+				let dt = NaiveDate::from_num_days_from_ce_opt(days)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year: dt.year(),
@@ -172,7 +173,7 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			EpochDay { days, time } => {
-				let dt = chrono::NaiveDate::from_epoch_days(days)
+				let dt = NaiveDate::from_epoch_days(days)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year: dt.year(),
@@ -182,8 +183,8 @@ impl Calendar for GregorianProleptic {
 						.map_or(ClockTime::MIN, |t| t.extend(ClockTime::MIN))),
 				}
 			},
-			MonthWeekday { year, month, weekday, n, time } => {
-				let dt = chrono::NaiveDate::from_weekday_of_month_opt(
+			Ymwn { year, month, weekday, n, time } => {
+				let dt = NaiveDate::from_weekday_of_month_opt(
 						year,
 						month,
 						weekday,
@@ -210,7 +211,7 @@ impl Calendar for GregorianProleptic {
 				let month = month.unwrap_or(11);
 				let day = day
 					.or_else(||
-						Some(chrono::NaiveDate::from_ymd_opt(year, month, 1)
+						Some(NaiveDate::from_ymd_opt(year, month, 1)
 					.expect("get NaiveDate for year & month")
 					.num_days_in_month() as u32));
 				Ymd {
@@ -222,7 +223,7 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			Yo { year, ordinal, time } => {
-				let dt = chrono::NaiveDate::from_yo_opt(year, ordinal)
+				let dt = NaiveDate::from_yo_opt(year, ordinal)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year,
@@ -233,8 +234,8 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			Ywd { year, week, weekday, time } => {
-				let weekday = weekday.unwrap_or(Weekday::Sat);
-				let dt = chrono::NaiveDate::from_isoywd_opt(year, week, weekday)
+				let weekday = weekday.unwrap_or(Weekday::Sun);
+				let dt = NaiveDate::from_isoywd_opt(year, week + 1, weekday)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year,
@@ -245,7 +246,7 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			CeDay { days, time } => {
-				let dt = chrono::NaiveDate::from_num_days_from_ce_opt(days)
+				let dt = NaiveDate::from_num_days_from_ce_opt(days)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year: dt.year(),
@@ -256,7 +257,7 @@ impl Calendar for GregorianProleptic {
 				}
 			},
 			EpochDay { days, time } => {
-				let dt = chrono::NaiveDate::from_epoch_days(days)
+				let dt = NaiveDate::from_epoch_days(days)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year: dt.year(),
@@ -266,8 +267,8 @@ impl Calendar for GregorianProleptic {
 						.map_or(ClockTime::MAX, |t| t.extend(ClockTime::MAX))),
 				}
 			},
-			MonthWeekday { year, month, weekday, n, time } => {
-				let dt = chrono::NaiveDate::from_weekday_of_month_opt(
+			Ymwn { year, month, weekday, n, time } => {
+				let dt = NaiveDate::from_weekday_of_month_opt(
 						year,
 						month,
 						weekday,
@@ -386,7 +387,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 
 				Ok(EpochDay { days, time })
 			},
-			Format::MonthWeekday => {
+			Format::Ymwn => {
 				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
 					.transpose()?;
@@ -417,7 +418,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 				let s = cap.get(7).map(|g| g.as_str().parse()).transpose()?;
 				let time = ClockTime::from_hms_opt(h, m, s);
 
-				Ok(MonthWeekday { year, month, weekday, n, time })
+				Ok(Ymwn { year, month, weekday, n, time })
 			},
 		}
 	}
@@ -438,7 +439,7 @@ pub enum Format {
 	/// The number of days since 19700101 in the Gregorian proleptic calendar.
 	EpochDay,
 	/// The `n`th weekday of the month of the given year.
-	MonthWeekday,
+	Ymwn,
 }
 
 impl Format {
@@ -452,7 +453,7 @@ impl Format {
 			Format::Ywd          => (2, 7),
 			Format::CeDay        => (2, 5),
 			Format::EpochDay     => (2, 5),
-			Format::MonthWeekday => if len == 4 {
+			Format::Ymwn => if len == 4 {
 				// 4 is specifically disallowed here, recommend adding more.
 				return Err(CaptureGroupCountError {
 					format: *self,
@@ -912,5 +913,493 @@ mod test {
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(2), day: Some(4), time });
+	}
+
+	#[test]
+	fn latest_yo_yo() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let dt = Yo { year: 2000, ordinal: 65, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(2), day: Some(4), time: Some(t1) });
+	}
+
+	#[test]
+	fn latest_yo_yoh() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_h(18));
+		let dt = Yo { year: 2000, ordinal: 65, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(2), day: Some(4), time });
+	}
+
+	#[test]
+	fn latest_yo_yohm() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_hm(18, 50));
+		let dt = Yo { year: 2000, ordinal: 65, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(2), day: Some(4), time });
+	}
+
+	#[test]
+	fn latest_yo_yohms() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_hms(18, 50, 1));
+		let dt = Yo { year: 2000, ordinal: 65, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(2), day: Some(4), time });
+	}
+
+	#[test]
+	fn earliest_ywd_yw() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let dt = Ywd { year: 2000, week: 40, weekday: None, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(9), day: Some(8), time: Some(t0) });
+	}
+
+	#[test]
+	fn earliest_ywd_ywd() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Some(Weekday::Tue);
+		let dt = Ywd { year: 2000, week: 40, weekday, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time: Some(t0) });
+	}
+
+	#[test]
+	fn earliest_ywd_ywdh() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Some(Weekday::Tue);
+		let t = Some(ClockTime::from_h(2));
+		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time });
+	}
+
+	#[test]
+	fn earliest_ywd_ywdhm() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Some(Weekday::Tue);
+		let t = Some(ClockTime::from_hm(2, 0));
+		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time });
+	}
+
+	#[test]
+	fn earliest_ywd_ywdhms() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Some(Weekday::Tue);
+		let t = Some(ClockTime::from_hms(2, 0, 59));
+		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time });
+	}
+
+	#[test]
+	fn latest_ywd_yw() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let dt = Ywd { year: 2000, week: 40, weekday: None, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(9), day: Some(14), time: Some(t1) });
+	}
+
+	#[test]
+	fn latest_ywd_ywd() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Some(Weekday::Tue);
+		let dt = Ywd { year: 2000, week: 40, weekday, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time: Some(t1) });
+	}
+
+	#[test]
+	fn latest_ywd_ywdh() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Some(Weekday::Tue);
+		let t = Some(ClockTime::from_h(2));
+		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time });
+	}
+
+	#[test]
+	fn latest_ywd_ywdhm() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Some(Weekday::Tue);
+		let t = Some(ClockTime::from_hm(2, 0));
+		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time });
+	}
+
+	#[test]
+	fn latest_ywd_ywdhms() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Some(Weekday::Tue);
+		let t = Some(ClockTime::from_hms(2, 0, 59));
+		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(9), day: Some(9), time });
+	}
+
+	#[test]
+	fn earliest_ce_d() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let dt = CeDay { days: 741832, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time: Some(t0) });
+	}
+
+	#[test]
+	fn earliest_ce_dh() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let t = Some(ClockTime::from_h(23));
+		let dt = CeDay { days: 741832, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time });
+	}
+
+	#[test]
+	fn earliest_ce_dhm() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let t = Some(ClockTime::from_hm(23, 15));
+		let dt = CeDay { days: 741832, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time });
+	}
+
+	#[test]
+	fn earliest_ce_dhms() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let t = Some(ClockTime::from_hms(23, 15, 59));
+		let dt = CeDay { days: 741832, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time });
+	}
+
+	#[test]
+	fn latest_ce_d() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let dt = CeDay { days: 741832, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time: Some(t1) });
+	}
+
+	#[test]
+	fn latest_ce_dh() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_h(23));
+		let dt = CeDay { days: 741832, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time });
+	}
+
+	#[test]
+	fn latest_ce_dhm() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_hm(23, 15));
+		let dt = CeDay { days: 741832, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time });
+	}
+
+	#[test]
+	fn latest_ce_dhms() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_hms(23, 15, 59));
+		let dt = CeDay { days: 741832, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2032, month: Some(0), day: Some(24), time });
+	}
+
+	#[test]
+	fn earliest_epoch_d() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let dt = EpochDay { days: -2189, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time: Some(t0) });
+	}
+
+	#[test]
+	fn earliest_epoch_dh() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let t = Some(ClockTime::from_h(23));
+		let dt = EpochDay { days: -2189, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time });
+	}
+
+	#[test]
+	fn earliest_epoch_dhm() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let t = Some(ClockTime::from_hm(23, 15));
+		let dt = EpochDay { days: -2189, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time });
+	}
+
+	#[test]
+	fn earliest_epoch_dhms() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let t = Some(ClockTime::from_hms(23, 15, 59));
+		let dt = EpochDay { days: -2189, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time });
+	}
+
+	#[test]
+	fn latest_epoch_d() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let dt = EpochDay { days: -2189, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time: Some(t1) });
+	}
+
+	#[test]
+	fn latest_epoch_dh() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_h(23));
+		let dt = EpochDay { days: -2189, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time });
+	}
+
+	#[test]
+	fn latest_epoch_dhm() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_hm(23, 15));
+		let dt = EpochDay { days: -2189, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time });
+	}
+
+	#[test]
+	fn latest_epoch_dhms() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let t = Some(ClockTime::from_hms(23, 15, 59));
+		let dt = EpochDay { days: -2189, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 1964, month: Some(0), day: Some(3), time });
+	}
+
+	#[test]
+	fn earliest_ymwn_ymwn() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Weekday::Fri;
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time: Some(t0) });
+	}
+
+	#[test]
+	fn earliest_ymwn_ymwnh() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Weekday::Fri;
+		let t = Some(ClockTime::from_h(4));
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time });
+	}
+
+	#[test]
+	fn earliest_ymwn_ymwnhm() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Weekday::Fri;
+		let t = Some(ClockTime::from_hm(4, 5));
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time });
+	}
+
+	#[test]
+	fn earliest_ymwn_ymwnhms() {
+		use GregorianProleptic::*;
+		let t0 = ClockTime::MIN;
+
+		let weekday = Weekday::Fri;
+		let t = Some(ClockTime::from_hms(4, 5, 6));
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
+		let time = t.map(|t| t.extend(t0));
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time });
+	}
+
+	#[test]
+	fn latest_ymwn_ymwn() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Weekday::Fri;
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time: Some(t1) });
+	}
+
+	#[test]
+	fn latest_ymwn_ymwnh() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Weekday::Fri;
+		let t = Some(ClockTime::from_h(4));
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time });
+	}
+
+	#[test]
+	fn latest_ymwn_ymwnhm() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Weekday::Fri;
+		let t = Some(ClockTime::from_hm(4, 5));
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time });
+	}
+
+	#[test]
+	fn latest_ymwn_ymwnhms() {
+		use GregorianProleptic::*;
+		let t1 = ClockTime::MAX;
+
+		let weekday = Weekday::Fri;
+		let t = Some(ClockTime::from_hms(4, 5, 6));
+		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
+		let time = t.map(|t| t.extend(t1));
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 80, month: Some(6), day: Some(13), time });
 	}
 }

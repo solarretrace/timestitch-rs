@@ -96,13 +96,17 @@ pub enum GregorianProleptic {
 
 
 impl GregorianProleptic {
-	/// Converts the value into a `Ymd` form if possible, or `Ywd` otherwise.
+	/// Converts the calendar period into a `Ymd` form if possible, or `Ywd`
+	/// otherwise.
+	///
+	/// # Panics
+	///
+	/// Panics if the calendar period requires conversion and the values lies
+	/// outside of the range of values representable by `chrono::NaiveDate`.
 	pub fn normalized(self) -> Self {
 		use GregorianProleptic::*;
 		match self {
-			Ymd { year, month, day, time } => {
-				Ymd { year, month, day, time }
-			},
+			Ymd { year, month, day, time } => Ymd { year, month, day, time },
 			Yo { year, ordinal, time } => {
 				let dt = NaiveDate::from_yo_opt(year, ordinal)
 					.expect("convert period to NaiveDate");
@@ -164,15 +168,20 @@ impl GregorianProleptic {
 		}
 	}
 
-	fn try_from_raw(raw: GregorianProlepticRaw)
+	/// Parses a `GregorianProleptic` from text using the provided format and
+	/// `Regex`.
+	fn parse_format(
+		text: &str,
+		format: Format,
+		re: &Regex)
 		-> Result<Self, GregorianProlepticParseError> 
 	{
 		use GregorianProleptic::*;
-		raw.format.validate_capture_group_count(&raw.re)?;
-		let cap = raw.re.captures(&raw.text)
+		format.validate_capture_group_count(&re)?;
+		let cap = re.captures(&text)
 			.ok_or_else(|| GregorianProlepticParseError::CaptureMatchFailure(
-				raw.text.clone()))?;
-		match raw.format {
+				text.to_owned().into_boxed_str()))?;
+		match format {
 			Format::Ymd => {
 				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
@@ -288,13 +297,13 @@ impl GregorianProleptic {
 impl Display for GregorianProleptic {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		// NOTE: Values are 0-indexed.
-		Display::fmt(&format!("<TIME>"), f)
+		todo!()
 	}
 }
 
 impl PartialOrd for GregorianProleptic {
 	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-		None
+		todo!()
 	}
 }
 
@@ -371,25 +380,11 @@ impl Calendar for GregorianProleptic {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Formats
+// Format
 ////////////////////////////////////////////////////////////////////////////////
-/// Unparsed `GregorianProleptic` calendar values with data needed to parse
-/// them.
-#[derive(Debug, Clone)]
-pub struct GregorianProlepticRaw {
-	/// The calendar format to parse.
-	pub format: Format,
-	/// The calendar period text.
-	pub text: Box<str>,
-	/// The regular expression providing captures for the calendar data.
-	pub re: Rc<Regex>,
-	// TODO: Capture group mapping.
-}
-
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Deserialize, Serialize)]
-/// The parsed time format.
+/// A parseable `GregorianProleptic` calendar format.
 pub enum Format {
 	/// The year, month, and day.
 	Ymd,
@@ -406,6 +401,8 @@ pub enum Format {
 }
 
 impl Format {
+	/// Validates the `Regex`, ensuring it contains the necessary number of
+	/// capture groups to parse the `GregorianProleptic` format.
 	fn validate_capture_group_count(&self, re: &Regex)
 		-> Result<usize, CaptureGroupCountError>
 	{

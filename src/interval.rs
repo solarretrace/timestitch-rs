@@ -116,13 +116,13 @@ impl<C> Display for TimeInterval<C>
 
 impl<C> PartialEq for TimeInterval<C> {
 	fn eq(&self, other: &Self) -> bool {
-		false
+		todo!()
 	}
 }
 
 impl<C> PartialOrd for TimeInterval<C> {
 	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-		None
+		todo!()
 	}
 }
 

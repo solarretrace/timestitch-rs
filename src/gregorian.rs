@@ -96,6 +96,74 @@ pub enum GregorianProleptic {
 
 
 impl GregorianProleptic {
+	/// Converts the value into a `Ymd` form if possible, or `Ywd` otherwise.
+	pub fn normalized(self) -> Self {
+		use GregorianProleptic::*;
+		match self {
+			Ymd { year, month, day, time } => {
+				Ymd { year, month, day, time }
+			},
+			Yo { year, ordinal, time } => {
+				let dt = NaiveDate::from_yo_opt(year, ordinal)
+					.expect("convert period to NaiveDate");
+				Ymd {
+					year,
+					month: Some(dt.month0()),
+					day: Some(dt.day0()),
+					time,
+				}
+			},
+			Ywd { year, week, weekday, time } => {
+				if let Some(weekday) = weekday {
+					let dt = NaiveDate::from_isoywd_opt(year, week + 1, weekday)
+						.expect("convert period to NaiveDate");
+					Ymd {
+						year,
+						month: Some(dt.month0()),
+						day: Some(dt.day0()),
+						time: time,
+					}
+				} else {
+					Ywd { year, week, weekday, time }
+				}
+			},
+			CeDay { days, time } => {
+				let dt = NaiveDate::from_num_days_from_ce_opt(days)
+					.expect("convert period to NaiveDate");
+				Ymd {
+					year: dt.year(),
+					month: Some(dt.month0()),
+					day: Some(dt.day0()),
+					time,
+				}
+			},
+			EpochDay { days, time } => {
+				let dt = NaiveDate::from_epoch_days(days)
+					.expect("convert period to NaiveDate");
+				Ymd {
+					year: dt.year(),
+					month: Some(dt.month0()),
+					day: Some(dt.day0()),
+					time,
+				}
+			},
+			Ymwn { year, month, weekday, n, time } => {
+				let dt = NaiveDate::from_weekday_of_month_opt(
+						year,
+						month,
+						weekday,
+						n)
+					.expect("convert period to NaiveDate");
+				Ymd {
+					year,
+					month: Some(month),
+					day: Some(dt.day0()),
+					time,
+				}
+			},
+		}
+	}
+
 	fn try_from_raw(raw: GregorianProlepticRaw)
 		-> Result<Self, GregorianProlepticParseError> 
 	{
@@ -219,6 +287,7 @@ impl GregorianProleptic {
 
 impl Display for GregorianProleptic {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		// NOTE: Values are 0-indexed.
 		Display::fmt(&format!("<TIME>"), f)
 	}
 }
@@ -233,28 +302,18 @@ impl Calendar for GregorianProleptic {
 	type ParseErr = GregorianProlepticParseError;
 
 	fn from_str(s: &str) -> Result<Self, Self::ParseErr> {
+		// NOTE: Values are 0-indexed.
 		todo!()
 	}
 
 	fn earliest(&self) -> Self {
 		use GregorianProleptic::*;
-		match *self {
+		match self.normalized() {
 			Ymd { year, month, day, time } => {
 				Ymd {
 					year,
 					month: month.or(Some(0)),
 					day: day.or(Some(0)),
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MIN, ClockTime::earliest)),
-				}
-			},
-			Yo { year, ordinal, time } => {
-				let dt = NaiveDate::from_yo_opt(year, ordinal)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year,
-					month: Some(dt.month0()),
-					day: Some(dt.day0()),
 					time: Some(time.as_ref()
 						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
@@ -271,49 +330,13 @@ impl Calendar for GregorianProleptic {
 						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
 			},
-			CeDay { days, time } => {
-				let dt = NaiveDate::from_num_days_from_ce_opt(days)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year: dt.year(),
-					month: Some(dt.month0()),
-					day: Some(dt.day0()),
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MIN, ClockTime::earliest)),
-				}
-			},
-			EpochDay { days, time } => {
-				let dt = NaiveDate::from_epoch_days(days)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year: dt.year(),
-					month: Some(dt.month0()),
-					day: Some(dt.day0()),
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MIN, ClockTime::earliest)),
-				}
-			},
-			Ymwn { year, month, weekday, n, time } => {
-				let dt = NaiveDate::from_weekday_of_month_opt(
-						year,
-						month,
-						weekday,
-						n)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year,
-					month: Some(month),
-					day: Some(dt.day0()),
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MIN, ClockTime::earliest)),
-				}
-			},
+			_ => unreachable!(),
 		}
 	} 
 
 	fn latest(&self) -> Self {
 		use GregorianProleptic::*;
-		match *self {
+		match self.normalized() {
 			Ymd { year, month, day, time } => {
 				let month = month.unwrap_or(11);
 				let day = day
@@ -325,17 +348,6 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(month),
 					day,
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MAX, ClockTime::latest)),
-				}
-			},
-			Yo { year, ordinal, time } => {
-				let dt = NaiveDate::from_yo_opt(year, ordinal)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year,
-					month: Some(dt.month0()),
-					day: Some(dt.day0()),
 					time: Some(time.as_ref()
 						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
@@ -352,43 +364,7 @@ impl Calendar for GregorianProleptic {
 						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
 			},
-			CeDay { days, time } => {
-				let dt = NaiveDate::from_num_days_from_ce_opt(days)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year: dt.year(),
-					month: Some(dt.month0()),
-					day: Some(dt.day0()),
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MAX, ClockTime::latest)),
-				}
-			},
-			EpochDay { days, time } => {
-				let dt = NaiveDate::from_epoch_days(days)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year: dt.year(),
-					month: Some(dt.month0()),
-					day: Some(dt.day0()),
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MAX, ClockTime::latest)),
-				}
-			},
-			Ymwn { year, month, weekday, n, time } => {
-				let dt = NaiveDate::from_weekday_of_month_opt(
-						year,
-						month,
-						weekday,
-						n)
-					.expect("convert period to NaiveDate");
-				Ymd {
-					year,
-					month: Some(month),
-					day: Some(dt.day0()),
-					time: Some(time.as_ref()
-						.map_or(ClockTime::MAX, ClockTime::latest)),
-				}
-			},
+			_ => unreachable!(),
 		}
 	} 
 }
@@ -494,6 +470,7 @@ impl From<ParseWeekdayError> for GregorianProlepticParseError {
 
 impl Display for GregorianProlepticParseError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		// NOTE: Values are 0-indexed.
 		todo!()
 	}
 }

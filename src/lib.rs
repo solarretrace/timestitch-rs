@@ -10,8 +10,9 @@
 // Internal modules.
 mod clock;
 mod gregorian;
-mod record;
 mod interval;
+mod record;
+mod util;
 pub mod application;
 
 // Exports.

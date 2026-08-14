@@ -10,6 +10,7 @@
 // Internal library imports.
 use crate::Calendar;
 use crate::ClockTime;
+use crate::util::CapturesMap;
 
 // External library imports.
 use serde::Deserialize;
@@ -23,7 +24,7 @@ pub use chrono::Datelike as _;
 // Standard Library imports.
 use std::fmt::Display;
 use std::fmt::Debug;
-use std::rc::Rc;
+use std::collections::HashMap;
 use std::num::ParseIntError;
 
 
@@ -170,17 +171,20 @@ impl GregorianProleptic {
 
 	/// Parses a `GregorianProleptic` from text using the provided format and
 	/// `Regex`.
-	fn parse_format(
+	pub fn parse_format(
 		text: &str,
 		format: Format,
-		re: &Regex)
+		re: &Regex,
+		capture_map: &HashMap<usize, usize>)
 		-> Result<Self, GregorianProlepticParseError> 
 	{
 		use GregorianProleptic::*;
 		format.validate_capture_group_count(&re)?;
-		let cap = re.captures(&text)
+		let cap = CapturesMap::new(re
+			.captures(&text)
 			.ok_or_else(|| GregorianProlepticParseError::CaptureMatchFailure(
-				text.to_owned().into_boxed_str()))?;
+				text.to_owned().into_boxed_str()))?,
+			&capture_map);
 		match format {
 			Format::Ymd => {
 				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
@@ -433,7 +437,6 @@ impl Format {
 		}
 	}
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

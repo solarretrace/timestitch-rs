@@ -142,7 +142,7 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(ClockTime::MIN),
+					time: time.or(Some(ClockTime::MIN)),
 				}
 			},
 			Ywd { year, week, weekday, time } => {
@@ -221,7 +221,7 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(ClockTime::MAX),
+					time: time.or(Some(ClockTime::MAX)),
 				}
 			},
 			Ywd { year, week, weekday, time } => {
@@ -308,7 +308,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 				let h = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
 				let s = cap.get(6).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::new(h, m, s);
+				let time = ClockTime::from_hms_opt(h, m, s);
 
 				Ok(Ymd { year, month, day, time })
 			},
@@ -329,7 +329,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 				let h = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
 				let s = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::new(h, m, s);
+				let time = ClockTime::from_hms_opt(h, m, s);
 
 				Ok(Yo { year, ordinal, time })
 			},
@@ -352,7 +352,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 				let h = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
 				let s = cap.get(6).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::new(h, m, s);
+				let time = ClockTime::from_hms_opt(h, m, s);
 
 				Ok(Ywd { year, week, weekday, time })
 			},
@@ -361,7 +361,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 				let h = cap.get(2).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
 				let s = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::new(h, m, s);
+				let time = ClockTime::from_hms_opt(h, m, s);
 
 				Ok(CeDay { days, time })
 			},
@@ -370,7 +370,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 				let h = cap.get(2).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
 				let s = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::new(h, m, s);
+				let time = ClockTime::from_hms_opt(h, m, s);
 
 				Ok(EpochDay { days, time })
 			},
@@ -403,7 +403,7 @@ impl TryFrom<GregorianProlepticRaw> for GregorianProleptic {
 				let h = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(6).map(|g| g.as_str().parse()).transpose()?;
 				let s = cap.get(7).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::new(h, m, s);
+				let time = ClockTime::from_hms_opt(h, m, s);
 
 				Ok(MonthWeekday { year, month, weekday, n, time })
 			},
@@ -467,52 +467,167 @@ impl Format {
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Deserialize, Serialize)]
-pub enum ClockTime {
-	/// A time resolved to hour resolution.
-	H {
-		/// The hour.
-		hour: u8,
-	},
-	/// A time resolved to minute resolution.
-	Hm {
-		/// The hour.
-		hour: u8,
-		/// The minute.
-		minute: u8
-	},
-	/// A time resolved to second resolution.
-	Hms {
-		/// The hour.
-		hour: u8,
-		/// The minute.
-		minute: u8,
-		/// The second.
-		second: u8
-	},
+pub struct ClockTime {
+	/// The hour.
+	hour: u8,
+	/// The minute.
+	minute: Option<u8>,
+	/// The second.
+	second: Option<u8>,
 }
 
 impl ClockTime {
-	pub const MIN: Self = Self::Hms { hour: 0, minute: 0, second: 0 };
-	pub const MAX: Self = Self::Hms { hour: 23, minute: 59, second: 59 };
-	/// Constructs a new `ClockTime` from the given hour, minute, second values.
+	/// The time at the start of a day.
+	pub const MIN: Self = Self { hour: 0, minute: Some(0), second: Some(0) };
+
+	/// The time at the end of a day.
+	pub const MAX: Self = Self { hour: 23, minute: Some(59), second: Some(59) };
+
+	/// Constructs a new `ClockTime` from the given hour value.
 	///
 	/// # Panics
 	///
-	/// Panics if a minute value is provided without an hour, or if a second
-	/// value is provided without a minute and hour.
+	/// Panics if the value is outside of the valid range.
 	#[must_use]
-	pub fn new(hour: Option<u8>, minute: Option<u8>, second: Option<u8>)
+	pub fn from_h(hour: u8) -> Self  {
+		assert!(hour < 24);
+		Self {
+			hour,
+			minute: None,
+			second: None,
+		}
+	}
+
+	/// Constructs a new `ClockTime` from the given hour & minute values.
+	///
+	/// # Panics
+	///
+	/// Panics if any values are outside of the valid ranges.
+	#[must_use]
+	pub fn from_hm(hour: u8, minute: u8) -> Self  {
+		assert!(hour < 24);
+		assert!(minute < 60);
+		Self {
+			hour,
+			minute: Some(minute),
+			second: None,
+		}
+	}
+
+	/// Constructs a new `ClockTime` from the given hour, minute, and second
+	/// values.
+	///
+	/// # Panics
+	///
+	/// Panics if any values are outside of the valid ranges.
+	#[must_use]
+	pub fn from_hms(hour: u8, minute: u8, second: u8) -> Self  {
+		assert!(hour < 24);
+		assert!(minute < 60);
+		assert!(second < 60);
+		Self {
+			hour,
+			minute: Some(minute),
+			second: Some(second),
+		}
+	}
+
+	/// Constructs a new `ClockTime` from the given hour, minute, and second
+	/// values.
+	///
+	/// If the seconds is provided without a minute, or a minute without an
+	/// hour, a value of `0` will be assumed for the less specific values.
+	///
+	/// # Panics
+	///
+	/// Panics if any values are outside of the valid ranges.
+	#[must_use]
+	pub fn from_hms_opt(
+		hour: Option<u8>,
+		minute: Option<u8>,
+		second: Option<u8>)
 		-> Option<Self>
 	{
-		match (hour, minute, second) {
-			(None, None, None) => None,
-			(Some(hour), None, None) => Some(Self::H { hour }),
-			(Some(hour), Some(minute), None) => Some(Self::Hm { hour, minute }),
-			(Some(hour), Some(minute), Some(second))
-				=> Some(Self::Hms { hour, minute, second }),
-
-			_ => panic!("invalid clock time resolution"),
+		if let Some(hour) = hour {
+			assert!(hour < 24);
 		}
+		
+		let hour = if let Some(minute) = minute {
+			assert!(minute < 60);
+			hour.or(Some(0))
+		} else {
+			None
+		};
+		
+		let (hour, minute) = if let Some(second) = second {
+			assert!(second < 60);
+			(hour.or(Some(0)), minute.or(Some(0)))
+		} else {
+			(None, None)
+		};
+
+		hour.map(|hour| Self {
+			hour,
+			minute,
+			second,
+		})
+	}
+
+	/// Sets the hour and returns the `ClockTime`.
+	#[must_use]
+	pub fn with_hour(mut self, hour: u8) -> Self {
+		self.hour = hour;
+		self
+	}
+
+	/// Sets the minute and returns the `ClockTime`.
+	#[must_use]
+	pub fn with_minute_opt(mut self, minute: Option<u8>) -> Self {
+		self.minute = minute;
+		self
+	}
+
+	/// Sets the minute and returns the `ClockTime`.
+	#[must_use]
+	pub fn with_minute(mut self, minute: u8) -> Self {
+		self.minute = Some(minute);
+		self
+	}
+
+	/// Sets the second and returns the `ClockTime`.
+	///
+	/// If the minute has not been set, it will be set to `0`.
+	#[must_use]
+	pub fn with_second_opt(mut self, second: Option<u8>) -> Self {
+		self.second = second;
+		self.minute = self.minute.or(Some(0));
+		self
+
+	}
+
+	/// Sets the second and returns the `ClockTime`.
+	///
+	/// If the minute has not been set, it will be set to `0`.
+	#[must_use]
+	pub fn with_second(mut self, second: u8) -> Self {
+		self.second = Some(second);
+		self.minute = self.minute.or(Some(0));
+		self
+	}
+
+	/// Sets the clocktime values for any components provided and returns the
+	/// `ClockTime`.
+	#[must_use]
+	pub fn with_time(mut self, time: ClockTime) -> Self {
+		self.hour = time.hour;
+		if time.minute.is_some() {
+			self.minute = time.minute;
+		}
+		if time.second.is_some() {
+			self.second = time.second;
+			self.minute = self.minute.or(Some(0));
+		}
+		self
 	}
 }
 
@@ -580,3 +695,168 @@ impl Display for CaptureGroupCountError {
 }
 
 impl std::error::Error for CaptureGroupCountError {}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Tests
+////////////////////////////////////////////////////////////////////////////////
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn earliest_ymd_y() {
+		use GregorianProleptic::*;
+		let t0 = Some(ClockTime::MIN);
+
+		let dt = Ymd { year: 2000, month: None, day: None, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(0), day: Some(0), time: t0 });
+	}
+
+	#[test]
+	fn earliest_ymd_ym() {
+		use GregorianProleptic::*;
+		let t0 = Some(ClockTime::MIN);
+
+		let dt = Ymd { year: 2000, month: Some(4), day: None, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(4), day: Some(0), time: t0 });
+	}
+
+	#[test]
+	fn earliest_ymd_ymd() {
+		use GregorianProleptic::*;
+		let t0 = Some(ClockTime::MIN);
+
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t0 });
+	}
+
+	#[test]
+	fn earliest_ymd_ymdh() {
+		use GregorianProleptic::*;
+
+		let t = Some(ClockTime::from_h(18));
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t });
+	}
+
+	#[test]
+	fn earliest_ymd_ymdhm() {
+		use GregorianProleptic::*;
+
+		let t = Some(ClockTime::from_hm(18, 8));
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t });
+	}
+
+	#[test]
+	fn earliest_ymd_ymdhms() {
+		use GregorianProleptic::*;
+
+		let t = Some(ClockTime::from_hms(18, 8, 59));
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t });
+	}
+
+	#[test]
+	fn latest_ymd_y() {
+		use GregorianProleptic::*;
+		let t1 = Some(ClockTime::MAX);
+
+		let dt = Ymd { year: 2000, month: None, day: None, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(11), day: Some(30), time: t1 });
+	}
+
+	#[test]
+	fn latest_ymd_ym() {
+		use GregorianProleptic::*;
+		let t1 = Some(ClockTime::MAX);
+
+		let dt = Ymd { year: 2000, month: Some(4), day: None, time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(4), day: Some(30), time: t1 });
+	}
+
+	#[test]
+	fn latest_ymd_ymd() {
+		use GregorianProleptic::*;
+		let t1 = Some(ClockTime::MAX);
+
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: None };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t1 });
+	}
+
+	#[test]
+	fn latest_ymd_ymdh() {
+		use GregorianProleptic::*;
+
+		let t = Some(ClockTime::from_h(18));
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t });
+	}
+
+	#[test]
+	fn latest_ymd_ymdhm() {
+		use GregorianProleptic::*;
+
+		let t = Some(ClockTime::from_hm(18, 8));
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t });
+	}
+
+	#[test]
+	fn latest_ymd_ymdhms() {
+		use GregorianProleptic::*;
+
+		let t = Some(ClockTime::from_hms(18, 8, 59));
+		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
+		assert_eq!(
+			dt.latest(),
+			Ymd { year: 2000, month: Some(4), day: Some(15), time: t });
+	}
+
+	#[test]
+	fn earliest_yo_yo() {
+		use GregorianProleptic::*;
+		let t0 = Some(ClockTime::MIN);
+
+		let dt = Yo { year: 2000, ordinal: 65, time: None };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(2), day: Some(4), time: t0 });
+	}
+
+	#[test]
+	fn earliest_yo_yoh() {
+		use GregorianProleptic::*;
+
+		let t = Some(ClockTime::from_h(18));
+		let dt = Yo { year: 2000, ordinal: 65, time: t };
+		assert_eq!(
+			dt.earliest(),
+			Ymd { year: 2000, month: Some(2), day: Some(4), time: t });
+	}
+}

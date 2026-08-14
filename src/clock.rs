@@ -7,16 +7,22 @@
 //! Clock-measurable time types.
 ////////////////////////////////////////////////////////////////////////////////
 
+// Internal library imports.
+use crate::Calendar;
+
 // External library imports.
 use serde::Deserialize;
 use serde::Serialize;
+
+// Standard library imports.
+use std::cmp::Ordering;
+use std::num::ParseIntError;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // ClockTime
 ////////////////////////////////////////////////////////////////////////////////
-/// A time period calendar resolvable to units less than one day in length, to
-/// one second in length.
+/// A time period resolvable to units of an hour, minute, or second.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Deserialize, Serialize)]
 pub struct ClockTime {
@@ -29,10 +35,10 @@ pub struct ClockTime {
 }
 
 impl ClockTime {
-    /// The time at the start of a day.
+    /// The time period of the first second of a day.
     pub const MIN: Self = Self { hour: 0, minute: Some(0), second: Some(0) };
 
-    /// The time at the end of a day.
+    /// The time period of at last second of a day.
     pub const MAX: Self = Self { hour: 23, minute: Some(59), second: Some(59) };
 
     /// Constructs a new `ClockTime` from the given hour value.
@@ -183,4 +189,80 @@ impl ClockTime {
         }
         self
     }
+
 }
+
+impl std::fmt::Display for ClockTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self { hour, minute: None, second: None }
+                => write!(f, "{:02}", hour),
+            Self { hour, minute: Some(m), second: None }
+                => write!(f, "{:02}:{:02}", hour, m),
+            Self { hour, minute: Some(m), second: Some(s) }
+                => write!(f, "{:02}:{:02}:{:02}", hour, m, s),
+            Self { hour, minute: None, second: Some(s) }
+                => write!(f, "{:02}:00:{:02}", hour, s),
+        }
+    }
+}
+
+// NOTE: We only compare times with equivalent resolutions. If unequivalent
+// resolutions need to be compared, the values should be projected via
+// `earliest` and `latest` first.
+impl PartialOrd for ClockTime {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let mut res = self.hour.cmp(&other.hour);
+        match (self.minute, other.minute) {
+            (Some(a), Some(b)) => { res = res.then(a.cmp(&b)); },
+            (None,    None)    => { /* Do nothing. */ },
+            _ => return None,
+        }
+        match (self.second, other.second) {
+            (Some(a), Some(b)) => { res = res.then(a.cmp(&b)); },
+            (None,    None)    => { /* Do nothing. */ },
+            _ => return None,
+        }
+        Some(res)
+    }
+}
+
+
+impl Calendar for ClockTime {
+    type ParseErr = ClockTimeParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::ParseErr> {
+        todo!()
+    }
+
+    fn earliest(&self) -> Self {
+        self.extend(Self::MIN)
+    }
+
+    fn latest(&self) -> Self {
+        self.extend(Self::MAX)
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Errors
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug, Clone)]
+pub enum ClockTimeParseError {
+    ParseIntError(ParseIntError),
+}
+
+impl From<ParseIntError> for ClockTimeParseError {
+    fn from(e: ParseIntError) -> Self {
+        ClockTimeParseError::ParseIntError(e)
+    }
+}
+
+impl std::fmt::Display for ClockTimeParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl std::error::Error for ClockTimeParseError {}

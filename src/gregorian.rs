@@ -8,7 +8,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use crate::TimeInterval;
 use crate::Calendar;
 use crate::ClockTime;
 
@@ -25,7 +24,6 @@ pub use chrono::Datelike as _;
 use std::fmt::Display;
 use std::fmt::Debug;
 use std::rc::Rc;
-use std::convert::TryFrom;
 use std::num::ParseIntError;
 
 
@@ -219,12 +217,6 @@ impl GregorianProleptic {
 	}
 }
 
-impl From<GregorianProleptic> for TimeInterval<GregorianProleptic> {
-	fn from(period: GregorianProleptic) -> Self {
-		todo!()
-	}
-}
-
 impl Display for GregorianProleptic {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		Display::fmt(&format!("<TIME>"), f)
@@ -252,8 +244,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: month.or(Some(0)),
 					day: day.or(Some(0)),
-					time: Some(time
-						.map_or(ClockTime::MIN, |t| t.extend(ClockTime::MIN))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
 			},
 			Yo { year, ordinal, time } => {
@@ -263,8 +255,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MIN, |t| t.extend(ClockTime::MIN))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
 			},
 			Ywd { year, week, weekday, time } => {
@@ -275,8 +267,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MIN, |t| t.extend(ClockTime::MIN))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
 			},
 			CeDay { days, time } => {
@@ -286,8 +278,8 @@ impl Calendar for GregorianProleptic {
 					year: dt.year(),
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MIN, |t| t.extend(ClockTime::MIN))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
 			},
 			EpochDay { days, time } => {
@@ -297,8 +289,8 @@ impl Calendar for GregorianProleptic {
 					year: dt.year(),
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MIN, |t| t.extend(ClockTime::MIN))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
 			},
 			Ymwn { year, month, weekday, n, time } => {
@@ -312,8 +304,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(month),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MIN, |t| t.extend(ClockTime::MIN))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MIN, ClockTime::earliest)),
 				}
 			},
 		}
@@ -333,8 +325,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(month),
 					day,
-					time: Some(time
-						.map_or(ClockTime::MAX, |t| t.extend(ClockTime::MAX))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
 			},
 			Yo { year, ordinal, time } => {
@@ -344,8 +336,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MAX, |t| t.extend(ClockTime::MAX))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
 			},
 			Ywd { year, week, weekday, time } => {
@@ -356,8 +348,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MAX, |t| t.extend(ClockTime::MAX))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
 			},
 			CeDay { days, time } => {
@@ -367,8 +359,8 @@ impl Calendar for GregorianProleptic {
 					year: dt.year(),
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MAX, |t| t.extend(ClockTime::MAX))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
 			},
 			EpochDay { days, time } => {
@@ -378,8 +370,8 @@ impl Calendar for GregorianProleptic {
 					year: dt.year(),
 					month: Some(dt.month0()),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MAX, |t| t.extend(ClockTime::MAX))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
 			},
 			Ymwn { year, month, weekday, n, time } => {
@@ -393,8 +385,8 @@ impl Calendar for GregorianProleptic {
 					year,
 					month: Some(month),
 					day: Some(dt.day0()),
-					time: Some(time
-						.map_or(ClockTime::MAX, |t| t.extend(ClockTime::MAX))),
+					time: Some(time.as_ref()
+						.map_or(ClockTime::MAX, ClockTime::latest)),
 				}
 			},
 		}
@@ -502,7 +494,7 @@ impl From<ParseWeekdayError> for GregorianProlepticParseError {
 
 impl Display for GregorianProlepticParseError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "ERROR")
+		todo!()
 	}
 }
 
@@ -581,11 +573,10 @@ mod test {
 	#[test]
 	fn earliest_ymd_ymdh() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_h(18));
 		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(4), day: Some(15), time });
@@ -594,11 +585,10 @@ mod test {
 	#[test]
 	fn earliest_ymd_ymdhm() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hm(18, 8));
 		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(4), day: Some(15), time });
@@ -607,11 +597,10 @@ mod test {
 	#[test]
 	fn earliest_ymd_ymdhms() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hms(18, 8, 59));
 		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(4), day: Some(15), time });
@@ -653,11 +642,10 @@ mod test {
 	#[test]
 	fn latest_ymd_ymdh() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_h(18));
 		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(4), day: Some(15), time });
@@ -666,11 +654,10 @@ mod test {
 	#[test]
 	fn latest_ymd_ymdhm() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hm(18, 8));
 		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(4), day: Some(15), time });
@@ -679,11 +666,10 @@ mod test {
 	#[test]
 	fn latest_ymd_ymdhms() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hms(18, 8, 59));
 		let dt = Ymd { year: 2000, month: Some(4), day: Some(15), time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(4), day: Some(15), time });
@@ -703,11 +689,10 @@ mod test {
 	#[test]
 	fn earliest_yo_yoh() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_h(18));
 		let dt = Yo { year: 2000, ordinal: 65, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(2), day: Some(4), time });
@@ -716,11 +701,10 @@ mod test {
 	#[test]
 	fn earliest_yo_yohm() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hm(18, 50));
 		let dt = Yo { year: 2000, ordinal: 65, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(2), day: Some(4), time });
@@ -729,11 +713,10 @@ mod test {
 	#[test]
 	fn earliest_yo_yohms() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hms(18, 50, 1));
 		let dt = Yo { year: 2000, ordinal: 65, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(2), day: Some(4), time });
@@ -753,11 +736,10 @@ mod test {
 	#[test]
 	fn latest_yo_yoh() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_h(18));
 		let dt = Yo { year: 2000, ordinal: 65, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(2), day: Some(4), time });
@@ -766,11 +748,10 @@ mod test {
 	#[test]
 	fn latest_yo_yohm() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hm(18, 50));
 		let dt = Yo { year: 2000, ordinal: 65, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(2), day: Some(4), time });
@@ -779,11 +760,10 @@ mod test {
 	#[test]
 	fn latest_yo_yohms() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hms(18, 50, 1));
 		let dt = Yo { year: 2000, ordinal: 65, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(2), day: Some(4), time });
@@ -815,12 +795,11 @@ mod test {
 	#[test]
 	fn earliest_ywd_ywdh() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let weekday = Some(Weekday::Tue);
 		let t = Some(ClockTime::from_h(2));
 		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(9), day: Some(9), time });
@@ -829,12 +808,11 @@ mod test {
 	#[test]
 	fn earliest_ywd_ywdhm() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let weekday = Some(Weekday::Tue);
 		let t = Some(ClockTime::from_hm(2, 0));
 		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(9), day: Some(9), time });
@@ -843,12 +821,11 @@ mod test {
 	#[test]
 	fn earliest_ywd_ywdhms() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let weekday = Some(Weekday::Tue);
 		let t = Some(ClockTime::from_hms(2, 0, 59));
 		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2000, month: Some(9), day: Some(9), time });
@@ -880,12 +857,11 @@ mod test {
 	#[test]
 	fn latest_ywd_ywdh() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let weekday = Some(Weekday::Tue);
 		let t = Some(ClockTime::from_h(2));
 		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(9), day: Some(9), time });
@@ -894,12 +870,11 @@ mod test {
 	#[test]
 	fn latest_ywd_ywdhm() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let weekday = Some(Weekday::Tue);
 		let t = Some(ClockTime::from_hm(2, 0));
 		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(9), day: Some(9), time });
@@ -908,12 +883,11 @@ mod test {
 	#[test]
 	fn latest_ywd_ywdhms() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let weekday = Some(Weekday::Tue);
 		let t = Some(ClockTime::from_hms(2, 0, 59));
 		let dt = Ywd { year: 2000, week: 40, weekday, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2000, month: Some(9), day: Some(9), time });
@@ -933,11 +907,10 @@ mod test {
 	#[test]
 	fn earliest_ce_dh() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_h(23));
 		let dt = CeDay { days: 741832, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2032, month: Some(0), day: Some(24), time });
@@ -946,11 +919,10 @@ mod test {
 	#[test]
 	fn earliest_ce_dhm() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hm(23, 15));
 		let dt = CeDay { days: 741832, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2032, month: Some(0), day: Some(24), time });
@@ -959,11 +931,10 @@ mod test {
 	#[test]
 	fn earliest_ce_dhms() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hms(23, 15, 59));
 		let dt = CeDay { days: 741832, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 2032, month: Some(0), day: Some(24), time });
@@ -983,11 +954,10 @@ mod test {
 	#[test]
 	fn latest_ce_dh() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_h(23));
 		let dt = CeDay { days: 741832, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2032, month: Some(0), day: Some(24), time });
@@ -996,11 +966,10 @@ mod test {
 	#[test]
 	fn latest_ce_dhm() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hm(23, 15));
 		let dt = CeDay { days: 741832, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2032, month: Some(0), day: Some(24), time });
@@ -1009,11 +978,10 @@ mod test {
 	#[test]
 	fn latest_ce_dhms() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hms(23, 15, 59));
 		let dt = CeDay { days: 741832, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 2032, month: Some(0), day: Some(24), time });
@@ -1033,11 +1001,10 @@ mod test {
 	#[test]
 	fn earliest_epoch_dh() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_h(23));
 		let dt = EpochDay { days: -2189, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 1964, month: Some(0), day: Some(3), time });
@@ -1046,11 +1013,10 @@ mod test {
 	#[test]
 	fn earliest_epoch_dhm() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hm(23, 15));
 		let dt = EpochDay { days: -2189, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 1964, month: Some(0), day: Some(3), time });
@@ -1059,11 +1025,10 @@ mod test {
 	#[test]
 	fn earliest_epoch_dhms() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let t = Some(ClockTime::from_hms(23, 15, 59));
 		let dt = EpochDay { days: -2189, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 1964, month: Some(0), day: Some(3), time });
@@ -1083,11 +1048,10 @@ mod test {
 	#[test]
 	fn latest_epoch_dh() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_h(23));
 		let dt = EpochDay { days: -2189, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 1964, month: Some(0), day: Some(3), time });
@@ -1096,11 +1060,10 @@ mod test {
 	#[test]
 	fn latest_epoch_dhm() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hm(23, 15));
 		let dt = EpochDay { days: -2189, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 1964, month: Some(0), day: Some(3), time });
@@ -1109,11 +1072,10 @@ mod test {
 	#[test]
 	fn latest_epoch_dhms() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let t = Some(ClockTime::from_hms(23, 15, 59));
 		let dt = EpochDay { days: -2189, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 1964, month: Some(0), day: Some(3), time });
@@ -1134,12 +1096,11 @@ mod test {
 	#[test]
 	fn earliest_ymwn_ymwnh() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let weekday = Weekday::Fri;
 		let t = Some(ClockTime::from_h(4));
 		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 80, month: Some(6), day: Some(13), time });
@@ -1148,12 +1109,11 @@ mod test {
 	#[test]
 	fn earliest_ymwn_ymwnhm() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let weekday = Weekday::Fri;
 		let t = Some(ClockTime::from_hm(4, 5));
 		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 80, month: Some(6), day: Some(13), time });
@@ -1162,12 +1122,11 @@ mod test {
 	#[test]
 	fn earliest_ymwn_ymwnhms() {
 		use GregorianProleptic::*;
-		let t0 = ClockTime::MIN;
 
 		let weekday = Weekday::Fri;
 		let t = Some(ClockTime::from_hms(4, 5, 6));
 		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
-		let time = t.map(|t| t.extend(t0));
+		let time = t.as_ref().map(ClockTime::earliest);
 		assert_eq!(
 			dt.earliest(),
 			Ymd { year: 80, month: Some(6), day: Some(13), time });
@@ -1188,12 +1147,11 @@ mod test {
 	#[test]
 	fn latest_ymwn_ymwnh() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let weekday = Weekday::Fri;
 		let t = Some(ClockTime::from_h(4));
 		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 80, month: Some(6), day: Some(13), time });
@@ -1202,12 +1160,11 @@ mod test {
 	#[test]
 	fn latest_ymwn_ymwnhm() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let weekday = Weekday::Fri;
 		let t = Some(ClockTime::from_hm(4, 5));
 		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 80, month: Some(6), day: Some(13), time });
@@ -1216,12 +1173,11 @@ mod test {
 	#[test]
 	fn latest_ymwn_ymwnhms() {
 		use GregorianProleptic::*;
-		let t1 = ClockTime::MAX;
 
 		let weekday = Weekday::Fri;
 		let t = Some(ClockTime::from_hms(4, 5, 6));
 		let dt = Ymwn { year: 80, month: 6, weekday, n: 2, time: t };
-		let time = t.map(|t| t.extend(t1));
+		let time = t.as_ref().map(ClockTime::latest);
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 80, month: Some(6), day: Some(13), time });

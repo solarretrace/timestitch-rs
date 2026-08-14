@@ -29,9 +29,15 @@ use std::fmt::Debug;
 /// in time.
 pub trait Calendar: Debug + Display 
     + PartialOrd + PartialEq
-    + FromStr + Into<TimeInterval<Self>>
+    + Into<TimeInterval<Self>>
     + 'static
 {
+	/// The associated error which can be returned from parsing.
+	type ParseErr: std::error::Error;
+
+	/// Parse a calendar value from a string.
+	fn from_str(s: &str) -> Result<Self, Self::ParseErr>;
+
 	/// The earliest point of the calendar period, resolved to the highest
 	/// granularity supported by the calendar.
 	fn earliest(&self) -> Self;
@@ -68,11 +74,18 @@ pub struct TimeInterval<C> {
 	pub end: TimeBound<C>,
 }
 
+impl<C> Default for TimeInterval<C> 
+	where C: Calendar
+{
+	fn default() -> Self {
+		Self::unknown()
+	}
+}
+
 impl<C> TimeInterval<C>
 	where C: Calendar
 {
-	
-
+	/// An unspecified time interval.
 	pub const fn unknown() -> Self {
 		Self {
 			start: TimeBound::Unbounded,
@@ -84,12 +97,12 @@ impl<C> TimeInterval<C>
 impl<C> FromStr for TimeInterval<C> 
 	where
 		C: Calendar,
-		<C as std::str::FromStr>::Err: std::error::Error + Send + Sync + 'static
+		C::ParseErr: Send + Sync + 'static
 {
-	type Err = <C as FromStr>::Err;
+	type Err = C::ParseErr;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Ok(Self::from(<C as FromStr>::from_str(s)?.into()))
+		Ok(Self::from(C::from_str(s)?.into()))
 	}
 }
 

@@ -46,7 +46,7 @@ pub fn process_files<'a, I, C>(
 	where
 		I: IntoIterator<Item=&'a Path>,
 		C: Calendar,
-		<C as std::str::FromStr>::Err: std::error::Error + Send + Sync + 'static
+		C::ParseErr: Send + Sync + 'static
 {
 	// Compile matchers.
 	let re_all: Regex = Regex::new(".*").unwrap();

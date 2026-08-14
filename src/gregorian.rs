@@ -21,7 +21,6 @@ pub use chrono::ParseWeekdayError;
 pub use chrono::Datelike as _;
 
 // Standard Library imports.
-use std::str::FromStr;
 use std::fmt::Display;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -103,14 +102,6 @@ impl From<GregorianProleptic> for TimeInterval<GregorianProleptic> {
 	}
 }
 
-impl FromStr for GregorianProleptic {
-	type Err = GregorianProlepticParseError;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		todo!()
-	}
-}
-
 impl Display for GregorianProleptic {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		Display::fmt(&format!("<TIME>"), f)
@@ -124,8 +115,12 @@ impl PartialOrd for GregorianProleptic {
 }
 
 impl Calendar for GregorianProleptic {
-	/// Returns the earliest possible representable moment of time that lies
-	/// within the given calendar period.
+	type ParseErr = GregorianProlepticParseError;
+
+	fn from_str(s: &str) -> Result<Self, Self::ParseErr> {
+		todo!()
+	}
+
 	fn earliest(&self) -> Self {
 		use GregorianProleptic::*;
 		match *self {
@@ -201,9 +196,6 @@ impl Calendar for GregorianProleptic {
 		}
 	} 
 
-	// TODO: Compute latest day, week.
-	/// Returns the latest possible representable moment of time that lies
-	/// within the given calendar period.
 	fn latest(&self) -> Self {
 		use GregorianProleptic::*;
 		match *self {

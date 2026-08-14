@@ -24,7 +24,6 @@ use std::path::PathBuf;
 use std::fmt::Debug;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Attribute
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,9 +120,12 @@ pub enum MatchFormat {
 	U64,
 	Time,
 	Text,
+	// TODO: Weekday
+	// TODO: Season
 }
 
 impl MatchFormat {
+	/// Parses an attribute and returns it as a `Box<dyn Attribute>`.
 	pub fn parse_dyn(self, s: &str) -> Result<Box<dyn Attribute>, Error> {
 		use MatchFormat::*;
 		match self {
@@ -133,7 +135,6 @@ impl MatchFormat {
 		}
 	}
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Input data source matching
@@ -152,4 +153,3 @@ impl PartialOrd for DataSource {
 		self.0.as_os_str().partial_cmp(other.0.as_os_str())
 	}
 }
-	

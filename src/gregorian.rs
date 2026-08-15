@@ -26,13 +26,14 @@ use std::fmt::Display;
 use std::fmt::Debug;
 use std::collections::HashMap;
 use std::num::ParseIntError;
+use std::cmp::Ordering;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // GregorianProleptic
 ////////////////////////////////////////////////////////////////////////////////
 /// A parsed real-world time period based on the Gregorian proleptic calendar.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 #[derive(Deserialize, Serialize)]
 pub enum GregorianProleptic {
 	/// The year, month, and day.
@@ -296,6 +297,24 @@ impl GregorianProleptic {
 			},
 		}
 	}
+
+	fn into_naive_date_time(self) -> chrono::NaiveDateTime {
+		if let GregorianProleptic::Ymd { year, month, day, time } = self {
+			let t = time.unwrap();
+			NaiveDate::from_ymd_opt(
+					year,
+					month.unwrap() + 1,
+					day.unwrap())
+				.unwrap()
+				.and_hms_opt(
+					t.hour() as u32,
+					t.minute().unwrap() as u32,
+					t.second().unwrap() as u32)
+				.unwrap()
+		} else {
+			panic!("unsupported enum value");
+		}
+	}
 }
 
 impl Display for GregorianProleptic {
@@ -305,9 +324,30 @@ impl Display for GregorianProleptic {
 	}
 }
 
+impl PartialEq for GregorianProleptic {
+	fn eq(&self, other: &Self) -> bool {
+		self.earliest().into_naive_date_time() 
+				== other.earliest().into_naive_date_time()
+			&& self.latest().into_naive_date_time() 
+				== other.latest().into_naive_date_time()
+	}
+}
+
 impl PartialOrd for GregorianProleptic {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-		todo!()
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		if self.latest().into_naive_date_time() 
+			< other.earliest().into_naive_date_time()
+		{
+			Some(Ordering::Less)
+		} else if self.earliest().into_naive_date_time() 
+			> other.latest().into_naive_date_time()
+		{
+			Some(Ordering::Greater)
+		} else if self == other {
+			Some(Ordering::Equal)
+		} else {
+			None
+		}
 	}
 }
 

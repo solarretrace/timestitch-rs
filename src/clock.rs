@@ -215,6 +215,21 @@ impl ClockTime {
 		self
 	}
 
+	/// The hour.
+	pub fn hour(&self) -> u8 {
+		self.hour
+	}
+
+	/// The minute.
+	pub fn minute(&self) -> Option<u8> {
+		self.minute
+	}
+
+	/// The second.
+	pub fn second(&self) -> Option<u8> {
+		self.second
+	}
+
 }
 
 impl std::fmt::Display for ClockTime {

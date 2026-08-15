@@ -324,6 +324,21 @@ impl Display for GregorianProleptic {
 	}
 }
 
+impl Ord for GregorianProleptic {
+	fn cmp(&self, other: &Self) -> Ordering {
+		self.earliest().into_naive_date_time()
+			.cmp(&other.earliest().into_naive_date_time())
+			.then(self.latest().into_naive_date_time()
+				.cmp(&other.latest().into_naive_date_time()))
+	}
+}
+
+impl PartialOrd for GregorianProleptic {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
 impl PartialEq for GregorianProleptic {
 	fn eq(&self, other: &Self) -> bool {
 		self.earliest().into_naive_date_time() 
@@ -333,23 +348,8 @@ impl PartialEq for GregorianProleptic {
 	}
 }
 
-impl PartialOrd for GregorianProleptic {
-	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		if self.latest().into_naive_date_time() 
-			< other.earliest().into_naive_date_time()
-		{
-			Some(Ordering::Less)
-		} else if self.earliest().into_naive_date_time() 
-			> other.latest().into_naive_date_time()
-		{
-			Some(Ordering::Greater)
-		} else if self == other {
-			Some(Ordering::Equal)
-		} else {
-			None
-		}
-	}
-}
+impl Eq for GregorianProleptic {}
+
 
 impl Calendar for GregorianProleptic {
 	type ParseErr = GregorianProlepticParseError;
@@ -1198,5 +1198,14 @@ mod test {
 		assert_eq!(
 			dt.latest(),
 			Ymd { year: 80, month: Some(6), day: Some(13), time });
+	}
+
+	#[test]
+	fn ordering() {
+		let mut elems: Vec<(usize, GregorianProleptic)> = vec![
+		];
+
+		elems.sort_by_key(|(a, b)| b);
+
 	}
 }

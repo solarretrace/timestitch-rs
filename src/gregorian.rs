@@ -121,7 +121,7 @@ impl GregorianProleptic {
 			},
 			Ywd { year, week, weekday, time } => {
 				if let Some(weekday) = weekday {
-					let dt = NaiveDate::from_isoywd_opt(year, week + 1, weekday)
+					let dt = NaiveDate::from_isoywd_opt(year, 1+week, weekday)
 						.expect("convert period to NaiveDate");
 					Ymd {
 						year,
@@ -301,11 +301,12 @@ impl GregorianProleptic {
 	fn into_naive_date_time(self) -> chrono::NaiveDateTime {
 		if let GregorianProleptic::Ymd { year, month, day, time } = self {
 			let t = time.unwrap();
-			NaiveDate::from_ymd_opt(
-					year,
-					month.unwrap() + 1,
-					day.unwrap())
-				.unwrap()
+			// month & day need to be converted to 1-index.
+			let dt = NaiveDate::from_ymd_opt(
+				year,
+				1+month.unwrap(),
+				1+day.unwrap());
+			dt.unwrap()
 				.and_hms_opt(
 					t.hour() as u32,
 					t.minute().unwrap() as u32,
@@ -373,7 +374,7 @@ impl Calendar for GregorianProleptic {
 			},
 			Ywd { year, week, weekday, time } => {
 				let weekday = weekday.unwrap_or(Weekday::Mon);
-				let dt = NaiveDate::from_isoywd_opt(year, week + 1, weekday)
+				let dt = NaiveDate::from_isoywd_opt(year, 1+week, weekday)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year,
@@ -393,10 +394,10 @@ impl Calendar for GregorianProleptic {
 			Ymd { year, month, day, time } => {
 				let month = month.unwrap_or(11);
 				let day = day
-					.or_else(||
-						Some(NaiveDate::from_ymd_opt(year, month, 1)
+					.or_else(|| Some(NaiveDate::from_ymd_opt(year, 1+month, 1)
 					.expect("get NaiveDate for year & month")
-					.num_days_in_month() as u32));
+					.num_days_in_month() as u32 - 1));
+
 				Ymd {
 					year,
 					month: Some(month),
@@ -407,7 +408,7 @@ impl Calendar for GregorianProleptic {
 			},
 			Ywd { year, week, weekday, time } => {
 				let weekday = weekday.unwrap_or(Weekday::Sun);
-				let dt = NaiveDate::from_isoywd_opt(year, week + 1, weekday)
+				let dt = NaiveDate::from_isoywd_opt(year, 1+week, weekday)
 					.expect("convert period to NaiveDate");
 				Ymd {
 					year,
@@ -1202,10 +1203,22 @@ mod test {
 
 	#[test]
 	fn ordering() {
+		use GregorianProleptic::*;
 		let mut elems: Vec<(usize, GregorianProleptic)> = vec![
+			(0, Ymd { year: 2000, month: None, day: None, time: None }),
+			(3, Ymd { year: 2000, month: Some(1), day: None, time: None }),
+			(2, Ymd { year: 2000, month: Some(0), day: None, time: None }),
+			(4, Ymd { year: 2001, month: None, day: None, time: None }),
+			(0, Ymwn { year: 80, month: 6, weekday: Weekday::Fri, n: 2, 
+				time: Some(ClockTime::from_hms(4, 5, 6)) }),
 		];
 
-		elems.sort_by_key(|(a, b)| b);
-
+		elems.sort_by_key(|(a, b)| *b);
+		for e in &elems {
+			println!("{:?}", e.1);
+		}
+		for (i, e) in elems.iter().enumerate() {
+			assert_eq!(i, e.0);
+		}
 	}
 }

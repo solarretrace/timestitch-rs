@@ -353,31 +353,47 @@ impl Ord for GregorianProleptic {
 					})
 			},
 			
-			(Ywd { year: ya, week: wa, weekday: da, time: ta },
-				Ywd { year: yb, week: wb, weekday: db, time: tb }) => 
+			(Ywd { year: ya, week: wa, .. }, Ywd { year: yb, week: wb, .. }) => 
 			{
-				let da = da.as_ref().map(Weekday::num_days_from_sunday);
-				let db = db.as_ref().map(Weekday::num_days_from_sunday);
-				ya.cmp(&yb)
-					.then(wa.cmp(&wb))
-					.then_with(|| match (da, db) {
-						(Some(a), Some(b)) => a.cmp(&b),
-						(None,    Some(_)) => Ordering::Less,
-						(Some(_), None)    => Ordering::Greater,
-						(None,    None)    => Ordering::Equal,
-					})
-					.then_with(|| match (ta, tb) {
-						(Some(a), Some(b)) => a.cmp(&b),
-						(None,    Some(_)) => Ordering::Less,
-						(Some(_), None)    => Ordering::Greater,
-						(None,    None)    => Ordering::Equal,
-					})
+				// Normalization should have removed any Ywd variants with their
+				// weekday or time provided, so we only have to compare up down
+				// to week resolution.
+				ya.cmp(&yb).then(wa.cmp(&wb))
 			},
 			
-			(Ymd { year: ya, month: ma, day: da, time: ta },
-				Ywd { year: yb, week: mb, weekday: db, time: tb }) => 
+			(Ymd { year: ya, month: ma, day: da, .. },
+				Ywd { year: yb, week: wb, .. }) => 
 			{
+				// Normalization should have removed any Ywd variants with their
+				// weekday or time provided, so we only have to compare up down
+				// to week resolution for the second arg.
+
+				// The ISO week always starts on Monday.
+				const MON: Weekday = Weekday::Mon;
+				
 				ya.cmp(&yb)
+					.then_with(|| match (ma, da, wb) {
+						(Some(m), Some(d), w) => {
+							// We know the exact day, so the ordering is just
+							// its position relative to the start of the week.
+							let da = NaiveDate::from_ymd_opt(ya, 1+m, 1+d)
+								.expect("get comparable date");
+							let db = NaiveDate::from_isoywd_opt(yb, w, MON)
+								.expect("get date for start of week");
+							da.cmp(&db)
+						},
+						(Some(m), None, w) => {
+							// We know the month, so the ordering is just the
+							// position of the first day of the month relative
+							// to the start of the week.
+							let da = NaiveDate::from_ymd_opt(ya, 1+m, 1)
+								.expect("get comparable date");
+							let db = NaiveDate::from_isoywd_opt(yb, w, MON)
+								.expect("get date for start of week");
+							da.cmp(&db)
+						},
+						(None, _, b) => Ordering::Less,
+					})
 			},
 			
 			(a @ Ywd { .. }, b @ Ymd { .. }) => b.cmp(&a).reverse(),
@@ -1256,19 +1272,44 @@ mod test {
 		use GregorianProleptic::*;
 		let mut elems: Vec<(usize, GregorianProleptic)> = vec![
 			(1, Ymd { year: 2000, month: None, day: None, time: None }),
-			(3, Ymd { year: 2000, month: Some(1), day: None, time: None }),
+			(5, Ymd { year: 2000, month: Some(1), day: None, time: None }),
 			(2, Ymd { year: 2000, month: Some(0), day: None, time: None }),
-			(4, Ymd { year: 2001, month: None, day: None, time: None }),
+			(6, Ymd { year: 2001, month: None, day: None, time: None }),
 			(0, Ymwn { year: 80, month: 6, weekday: Weekday::Fri, n: 2, 
 				time: Some(ClockTime::from_hms(4, 5, 6)) }),
+			(3, Ywd { year: 2000, week: 1, weekday: None, time: None }),
+			(4, Ywd { year: 2000, week: 1, weekday: Some(Weekday::Fri), time: None }),
 		];
 
-		elems.sort_by_key(|(a, b)| *b);
+		elems.sort_by_key(|(_, b)| *b);
 		for e in &elems {
 			println!("{:?}", e.1);
 		}
 		for (i, e) in elems.iter().enumerate() {
 			assert_eq!(i, e.0);
 		}
+	}
+
+
+	#[test]
+	fn ordering_weekday_later() {
+		use GregorianProleptic::*;
+		let time = None;
+
+		let res = Ywd { year: 2000, week: 1, weekday: None, time }.cmp(
+			&Ywd { year: 2000, week: 1, weekday: Some(Weekday::Fri), time});
+
+		assert_eq!(res, Ordering::Less);
+	}
+
+	#[test]
+	fn ordering_month_earlier() {
+		use GregorianProleptic::*;
+		let time = None;
+
+		let res = Ymd { year: 2000, month: None, day: None, time }.cmp(
+			&Ywd { year: 2000, week: 1, weekday: None, time});
+
+		assert_eq!(res, Ordering::Less);
 	}
 }

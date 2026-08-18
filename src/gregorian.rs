@@ -327,10 +327,63 @@ impl Display for GregorianProleptic {
 
 impl Ord for GregorianProleptic {
 	fn cmp(&self, other: &Self) -> Ordering {
-		self.earliest().into_naive_date_time()
-			.cmp(&other.earliest().into_naive_date_time())
-			.then(self.latest().into_naive_date_time()
-				.cmp(&other.latest().into_naive_date_time()))
+		use GregorianProleptic::*;
+		match (self.normalized(), other.normalized()) {
+			(Ymd { year: ya, month: ma, day: da, time: ta },
+				Ymd { year: yb, month: mb, day: db, time: tb }) => 
+			{
+				ya.cmp(&yb)
+					.then_with(|| match (ma, mb) {
+						(Some(a), Some(b)) => a.cmp(&b),
+						(None,    Some(_)) => Ordering::Less,
+						(Some(_), None)    => Ordering::Greater,
+						(None,    None)    => Ordering::Equal,
+					})
+					.then_with(|| match (da, db) {
+						(Some(a), Some(b)) => a.cmp(&b),
+						(None,    Some(_)) => Ordering::Less,
+						(Some(_), None)    => Ordering::Greater,
+						(None,    None)    => Ordering::Equal,
+					})
+					.then_with(|| match (ta, tb) {
+						(Some(a), Some(b)) => a.cmp(&b),
+						(None,    Some(_)) => Ordering::Less,
+						(Some(_), None)    => Ordering::Greater,
+						(None,    None)    => Ordering::Equal,
+					})
+			},
+			
+			(Ywd { year: ya, week: wa, weekday: da, time: ta },
+				Ywd { year: yb, week: wb, weekday: db, time: tb }) => 
+			{
+				let da = da.as_ref().map(Weekday::num_days_from_sunday);
+				let db = db.as_ref().map(Weekday::num_days_from_sunday);
+				ya.cmp(&yb)
+					.then(wa.cmp(&wb))
+					.then_with(|| match (da, db) {
+						(Some(a), Some(b)) => a.cmp(&b),
+						(None,    Some(_)) => Ordering::Less,
+						(Some(_), None)    => Ordering::Greater,
+						(None,    None)    => Ordering::Equal,
+					})
+					.then_with(|| match (ta, tb) {
+						(Some(a), Some(b)) => a.cmp(&b),
+						(None,    Some(_)) => Ordering::Less,
+						(Some(_), None)    => Ordering::Greater,
+						(None,    None)    => Ordering::Equal,
+					})
+			},
+			
+			(Ymd { year: ya, month: ma, day: da, time: ta },
+				Ywd { year: yb, week: mb, weekday: db, time: tb }) => 
+			{
+				ya.cmp(&yb)
+			},
+			
+			(a @ Ywd { .. }, b @ Ymd { .. }) => b.cmp(&a).reverse(),
+			
+			_ => unreachable!(),
+		}
 	}
 }
 
@@ -342,10 +395,7 @@ impl PartialOrd for GregorianProleptic {
 
 impl PartialEq for GregorianProleptic {
 	fn eq(&self, other: &Self) -> bool {
-		self.earliest().into_naive_date_time() 
-				== other.earliest().into_naive_date_time()
-			&& self.latest().into_naive_date_time() 
-				== other.latest().into_naive_date_time()
+		self.cmp(other).is_eq()
 	}
 }
 
@@ -1205,7 +1255,7 @@ mod test {
 	fn ordering() {
 		use GregorianProleptic::*;
 		let mut elems: Vec<(usize, GregorianProleptic)> = vec![
-			(0, Ymd { year: 2000, month: None, day: None, time: None }),
+			(1, Ymd { year: 2000, month: None, day: None, time: None }),
 			(3, Ymd { year: 2000, month: Some(1), day: None, time: None }),
 			(2, Ymd { year: 2000, month: Some(0), day: None, time: None }),
 			(4, Ymd { year: 2001, month: None, day: None, time: None }),

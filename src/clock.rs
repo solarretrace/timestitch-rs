@@ -23,7 +23,7 @@ use std::num::ParseIntError;
 // ClockTime
 ////////////////////////////////////////////////////////////////////////////////
 /// A time period resolvable to units of an hour, minute, or second.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 #[derive(Deserialize, Serialize)]
 pub struct ClockTime {
 	/// The hour.
@@ -247,25 +247,39 @@ impl std::fmt::Display for ClockTime {
 	}
 }
 
-// NOTE: We only compare times with equivalent resolutions. If unequivalent
-// resolutions need to be compared, the values should be projected via
-// `earliest` and `latest` first.
-impl PartialOrd for ClockTime {
-	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		let mut res = self.hour.cmp(&other.hour);
-		match (self.minute, other.minute) {
-			(Some(a), Some(b)) => { res = res.then(a.cmp(&b)); },
-			(None,    None)    => { /* Do nothing. */ },
-			_ => return None,
-		}
-		match (self.second, other.second) {
-			(Some(a), Some(b)) => { res = res.then(a.cmp(&b)); },
-			(None,    None)    => { /* Do nothing. */ },
-			_ => return None,
-		}
-		Some(res)
+
+impl Ord for ClockTime {
+	fn cmp(&self, other: &Self) -> Ordering {
+		self.hour.cmp(&other.hour)
+			.then_with(|| match (self.minute, other.minute) {
+				(Some(a), Some(b)) => a.cmp(&b),
+				(None,    Some(_)) => Ordering::Greater,
+				(Some(_), None)    => Ordering::Less,
+				(None,    None)    => Ordering::Equal,
+			})
+			.then_with(|| match (self.second, other.second) {
+				(Some(a), Some(b)) => a.cmp(&b),
+				(None,    Some(_)) => Ordering::Greater,
+				(Some(_), None)    => Ordering::Less,
+				(None,    None)    => Ordering::Equal,
+			})
 	}
 }
+
+
+impl PartialOrd for ClockTime {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		Some(self.cmp(other))
+	}
+}
+
+impl PartialEq for ClockTime {
+	fn eq(&self, other: &Self) -> bool {
+		self.cmp(other).is_eq()
+	}
+}
+
+impl Eq for ClockTime {}
 
 
 impl Calendar for ClockTime {

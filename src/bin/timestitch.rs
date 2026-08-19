@@ -8,7 +8,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal library imports.
-use timestitch::application::CommandOptions;
+use timestitch::application::CliOpts;
 use timestitch::application::Config;
 use timestitch::application::Prefs;
 use timestitch::application::process_files;
@@ -66,7 +66,9 @@ pub fn main() {
 /// The application facade for propagating user errors.
 pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 	// Parse opts line options.
-	let opts = CommandOptions::try_parse()?;
+	let mut opts = CliOpts::try_parse()?;
+	if opts.no_expand_directories { opts.expand_directories = false }
+	if !opts.expand_directories { opts.expand_recursive = false }
 
 	// We lazily populate the current directory. We may fail to access it, and
 	// it would be a spurious error to fail if we don't actually need to use it.
@@ -156,6 +158,7 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 			let entries: Vec<Entry<GregorianProleptic>> = process_files(
 				&config,
 				&prefs,
+				&opts,
 				opts.files.iter().map(|p| p.as_path()))?;
 
 			println!("{:?}", entries);

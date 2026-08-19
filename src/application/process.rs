@@ -10,6 +10,7 @@
 // Internal library imports.
 use crate::application::Config;
 use crate::application::Prefs;
+use crate::application::CliOpts;
 use crate::Entry;
 use crate::DataSource;
 use crate::MatchSource;
@@ -41,6 +42,7 @@ use std::path::Path;
 pub fn process_files<'a, I, C>(
 	_config: &Config,
 	prefs: &Prefs,
+	opts: &CliOpts,
 	paths: I)
 	-> Result<Vec<Entry<C>>, Error>
 	where

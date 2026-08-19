@@ -7,23 +7,27 @@
 //! Command line interface module.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 // External library imports.
+use clap::ArgAction;
 use clap::Parser;
-use serde::Serialize;
 use serde::Deserialize;
+use serde::Serialize;
 
 // Standard library imports.
 use std::path::PathBuf;
 
 
-
-
+////////////////////////////////////////////////////////////////////////////////
+// CliOpts
+////////////////////////////////////////////////////////////////////////////////
+/// Command line interface options.
+#[deny(missing_docs)]
+#[deny(clippy::missing_docs_in_private_items)]
 #[derive(Debug, Clone)]
 #[derive(Parser)]
 #[clap(name = "timestitch")]
 #[clap(author, version, about, long_about = None)]
-pub struct CommandOptions {
+pub struct CliOpts {
 	/// The application configuration file to load.
 	#[clap(
 		long = "config",
@@ -65,6 +69,39 @@ pub struct CommandOptions {
 		long = "ztrace",
 		hide(true))]
 	pub trace: bool,
+
+	/// Fail immediately when an input source cannot be processed.
+	#[clap(long = "fast-fail")]
+	pub fail_on_error: bool,
+
+	/// Skip processing any non-normal files. (Use --no-dirs to also skip
+	/// directories.)
+	#[clap(long = "normal_only")]
+	pub normal_only: bool,
+
+	/// Scan the contents of provided directories for additional input sources.
+	/// (Enabled by default, but can be used to override --no-dirs.)
+	// NOTE: This must be manually disabled if no_expand_directories is true.
+	#[clap(
+		long = "dirs",
+		overrides_with = "no_expand_directories",
+		default_value_t = true)]
+	pub expand_directories: bool,
+
+	/// Skip processing of provided directories. (Disabled by default, but can
+	/// be used to override --dirs.)
+	#[clap(
+		long = "no-dirs",
+		overrides_with = "expand_directories")]
+	pub no_expand_directories: bool,
+
+	/// Scan the contents of discovered directories recursively for additional
+	/// input sources. (Has no effect if --no-dirs is used.)
+	// NOTE: This must be manually disabled if expand_directories is false.
+	#[clap(
+		short = 'r',
+		long = "recursive")]
+	pub expand_recursive: bool,
 
 	/// The input data sources.
 	#[clap(value_parser)]
@@ -135,3 +172,4 @@ impl std::fmt::Display for ColorOptionParseError {
 		write!(f, "failure to parse ColorOption")
 	}
 }
+

@@ -14,6 +14,7 @@
 // Internal library imports.
 use crate::Calendar;
 use crate::ClockTime;
+use crate::TimeFormat;
 use crate::util::CapturesMap;
 
 // External library imports.
@@ -179,7 +180,7 @@ impl GregorianProleptic {
 	/// `Regex`.
 	pub fn parse_format(
 		text: &str,
-		format: Format,
+		format: DateFormat,
 		re: &Regex,
 		capture_map: &HashMap<usize, usize>)
 		-> Result<Self, GregorianProlepticParseError> 
@@ -192,7 +193,7 @@ impl GregorianProleptic {
 				text.to_owned().into_boxed_str()))?,
 			&capture_map);
 		match format {
-			Format::Ymd => {
+			DateFormat::Ymd => {
 				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
 					.transpose()?;
@@ -205,7 +206,7 @@ impl GregorianProleptic {
 
 				Ok(Ymd { year, month, day, time })
 			},
-			Format::Yo => {
+			DateFormat::Yo => {
 				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let ordinal: Option<u32> = cap.get(2)
 					.map(|g| g.as_str().parse())
@@ -226,7 +227,7 @@ impl GregorianProleptic {
 
 				Ok(Yo { year, ordinal, time })
 			},
-			Format::Ywd => {
+			DateFormat::Ywd => {
 				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let week: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
 					.transpose()?;
@@ -249,7 +250,7 @@ impl GregorianProleptic {
 
 				Ok(Ywd { year, week, weekday, time })
 			},
-			Format::CeDay => {
+			DateFormat::CeDay => {
 				let days: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let h = cap.get(2).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
@@ -258,7 +259,7 @@ impl GregorianProleptic {
 
 				Ok(CeDay { days, time })
 			},
-			Format::EpochDay => {
+			DateFormat::EpochDay => {
 				let days: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let h = cap.get(2).map(|g| g.as_str().parse()).transpose()?;
 				let m = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
@@ -267,7 +268,7 @@ impl GregorianProleptic {
 
 				Ok(EpochDay { days, time })
 			},
-			Format::Ymwn => {
+			DateFormat::Ymwn => {
 				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
 				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
 					.transpose()?;
@@ -436,9 +437,10 @@ impl Eq for GregorianProleptic {}
 
 
 impl Calendar for GregorianProleptic {
+	type ParseReq = ParseFormat;
 	type ParseErr = GregorianProlepticParseError;
 
-	fn from_str(s: &str) -> Result<Self, Self::ParseErr> {
+	fn from_str(s: &str, req: &Self::ParseReq) -> Result<Self, Self::ParseErr> {
 		// NOTE: Values are 0-indexed.
 		todo!()
 	}
@@ -510,10 +512,20 @@ impl Calendar for GregorianProleptic {
 ////////////////////////////////////////////////////////////////////////////////
 // Format
 ////////////////////////////////////////////////////////////////////////////////
+/// A parseable `GregorianProleptic` calendar format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Deserialize, Serialize)]
-/// A parseable `GregorianProleptic` calendar format.
-pub enum Format {
+pub struct ParseFormat {
+	/// The format for the date.
+	date: DateFormat,
+	/// The format for the time.
+	time: TimeFormat,
+}
+
+/// A parseable `GregorianProleptic` calendar date format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Deserialize, Serialize)]
+pub enum DateFormat {
 	/// The year, month, and day.
 	Ymd,
 	/// The year and ordinal.
@@ -528,7 +540,7 @@ pub enum Format {
 	Ymwn,
 }
 
-impl Format {
+impl DateFormat {
 	/// Validates the `Regex`, ensuring it contains the necessary number of
 	/// capture groups to parse the `GregorianProleptic` format.
 	fn validate_capture_group_count(&self, re: &Regex)
@@ -536,12 +548,12 @@ impl Format {
 	{
 		let len = re.captures_len();
 		let (min, max) = match self {
-			Format::Ymd          => (2, 7),
-			Format::Yo           => (2, 6),
-			Format::Ywd          => (2, 7),
-			Format::CeDay        => (2, 5),
-			Format::EpochDay     => (2, 5),
-			Format::Ymwn => if len == 4 {
+			DateFormat::Ymd          => (2, 7),
+			DateFormat::Yo           => (2, 6),
+			DateFormat::Ywd          => (2, 7),
+			DateFormat::CeDay        => (2, 5),
+			DateFormat::EpochDay     => (2, 5),
+			DateFormat::Ymwn => if len == 4 {
 				// 4 is specifically disallowed here, recommend adding more.
 				return Err(CaptureGroupCountError {
 					format: *self,
@@ -607,7 +619,7 @@ impl std::error::Error for GregorianProlepticParseError {}
 #[derive(Debug, Clone, Copy)]
 pub struct CaptureGroupCountError {
 	/// The time format.
-	pub format: Format,
+	pub format: DateFormat,
 	/// The minimum number of capture groups to use.
 	pub min: u8,
 	/// The maximum number of capture groups to use.

@@ -15,7 +15,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 // Standard Library imports.
-use std::str::FromStr;
 use std::fmt::Display;
 use std::fmt::Debug;
 
@@ -44,11 +43,15 @@ impl Default for CalendarSystem {
 /// A representation of a time period suitable for potentially imprecise moments
 /// in time.
 pub trait Calendar: Debug + Display + Clone + PartialOrd + PartialEq + 'static {
+	/// Data provided for fulfilling parse requests.
+	type ParseReq;
+
 	/// The associated error which can be returned from parsing.
 	type ParseErr: std::error::Error;
 
+
 	/// Parse a calendar value from a string.
-	fn from_str(s: &str) -> Result<Self, Self::ParseErr>;
+	fn from_str(s: &str, req: &Self::ParseReq) -> Result<Self, Self::ParseErr>;
 
 	/// The earliest point of the calendar period, resolved to the highest
 	/// granularity supported by the calendar.
@@ -124,17 +127,8 @@ impl<C> TimeInterval<C>
 		}
 	}
 
-}
-
-impl<C> FromStr for TimeInterval<C> 
-	where
-		C: Calendar,
-		C::ParseErr: Send + Sync + 'static
-{
-	type Err = C::ParseErr;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Ok(Self::from(C::from_str(s)?.into()))
+	pub fn from_str(s: &str, req: &C::ParseReq) -> Result<Self, C::ParseErr> {
+		Ok(Self::from(C::from_str(s, req)?.into()))
 	}
 }
 

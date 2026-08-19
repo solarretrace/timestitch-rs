@@ -26,6 +26,35 @@ use std::sync::OnceLock;
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// TimeFormat
+////////////////////////////////////////////////////////////////////////////////
+/// The time format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Deserialize, Serialize)]
+pub enum TimeFormat {
+	/// The 12-hour time format.
+	Hours12,
+	/// The 24-hour time format.
+	Hours24,
+}
+
+impl TimeFormat {
+	/// Returns a ClockTimeParseError if the given hour value lies outside of
+	/// the valid range for the format.
+	fn validate_hour(self, hour: u8) -> Result<u8, ClockTimeParseError> {
+		match self {
+			TimeFormat::Hours12 if hour >= 12 => {
+				Err(ClockTimeParseError::InvalidClockTime)
+			},
+			TimeFormat::Hours24 if hour >= 24 => {
+				Err(ClockTimeParseError::InvalidClockTime)
+			},
+			_ => Ok(hour)
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // ClockTime
 ////////////////////////////////////////////////////////////////////////////////
 /// A time period resolvable to units of an hour, minute, or second.
@@ -297,17 +326,19 @@ impl Eq for ClockTime {}
 static CLOCKTIME_PARSE_RE: OnceLock<Regex> = OnceLock::new();
 
 impl Calendar for ClockTime {
+	type ParseReq = TimeFormat;
 	type ParseErr = ClockTimeParseError;
 
-	fn from_str(s: &str) -> Result<Self, Self::ParseErr> {
+	fn from_str(s: &str, req: &TimeFormat) -> Result<Self, Self::ParseErr> {
 		let re = CLOCKTIME_PARSE_RE.get_or_init(||
 			Regex::new("(\\d?\\d)(?::(\\d\\d))?(?::(\\d\\d))?\\b").unwrap());
 		let caps = re.captures(s).ok_or(ClockTimeParseError::InvalidClockTime)?;
 		
-		let hour = caps.get(1).unwrap().as_str().parse::<u8>()?;
-		if hour >= 24 {
-			return Err(ClockTimeParseError::InvalidClockTime);
-		}
+		let hour = req.validate_hour(caps
+			.get(1)
+			.unwrap()
+			.as_str()
+			.parse::<u8>()?)?;
 
 		let minute = caps.get(2).map(|c| c.as_str().parse::<u8>()).transpose()?;
 		if minute.is_some_and(|m| m >= 60) {

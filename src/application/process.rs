@@ -112,15 +112,17 @@ pub fn process_files<'a, I, C>(
 			let time = match prefs.entry_time_source {
 				MatchSource::Default => TimeInterval::<C>::unknown(),
 				MatchSource::Path { group } => {
-					TimeInterval::from_str(
+					TimeInterval::parse_format(
 						path_captures
 							.get(group)
 							.ok_or(anyhow!("invalid path capture group"))?
 							.as_str(),
+						todo!(),
+						todo!(),
 						todo!())?
 				},
 				MatchSource::Content { line, group } => {
-					TimeInterval::from_str(
+					TimeInterval::parse_format(
 						line_captures
 							.get(line)
 							.ok_or(anyhow!("invalid line index"))?
@@ -129,6 +131,8 @@ pub fn process_files<'a, I, C>(
 							.get(group)
 							.ok_or(anyhow!("invalid line capture group"))?
 							.as_str(),
+						todo!(),
+						todo!(),
 						todo!())?
 				},
 			};

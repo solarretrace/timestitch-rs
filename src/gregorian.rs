@@ -14,8 +14,10 @@
 // Internal library imports.
 use crate::Calendar;
 use crate::ClockTime;
+use crate::ClockTimeParseError;
 use crate::TimeFormat;
 use crate::util::CapturesMap;
+use crate::error::CaptureGroupCountError;
 
 // External library imports.
 use serde::Deserialize;
@@ -175,153 +177,6 @@ impl GregorianProleptic {
 			},
 		}
 	}
-
-	/// Parses a `GregorianProleptic` from text using the provided format and
-	/// `Regex`.
-	pub fn parse_format(
-		text: &str,
-		format: DateFormat,
-		re: &Regex,
-		capture_map: &HashMap<usize, usize>)
-		-> Result<Self, GregorianProlepticParseError> 
-	{
-		use GregorianProleptic::*;
-		format.validate_capture_group_count(&re)?;
-		let cap = CapturesMap::new(re
-			.captures(&text)
-			.ok_or_else(|| GregorianProlepticParseError::CaptureMatchFailure(
-				text.to_owned().into_boxed_str()))?,
-			&capture_map);
-		match format {
-			DateFormat::Ymd => {
-				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
-				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
-					.transpose()?;
-				let day: Option<u32> = cap.get(3).map(|g| g.as_str().parse())
-					.transpose()?;
-				let h = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
-				let m = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
-				let s = cap.get(6).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::from_hms_opt(h, m, s);
-
-				Ok(Ymd { year, month, day, time })
-			},
-			DateFormat::Yo => {
-				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
-				let ordinal: Option<u32> = cap.get(2)
-					.map(|g| g.as_str().parse())
-					.transpose()?;
-				if ordinal.is_none() {
-					return Ok(GregorianProleptic::Ymd {
-						year,
-						month: None,
-						day: None,
-						time: None,
-					});
-				}
-				let ordinal = ordinal.unwrap();
-				let h = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
-				let m = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
-				let s = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::from_hms_opt(h, m, s);
-
-				Ok(Yo { year, ordinal, time })
-			},
-			DateFormat::Ywd => {
-				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
-				let week: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
-					.transpose()?;
-				if week.is_none() {
-					return Ok(GregorianProleptic::Ymd {
-						year,
-						month: None,
-						day: None,
-						time: None,
-					});
-				}
-				let week = week.unwrap();
-				let weekday: Option<Weekday> = cap.get(3)
-					.map(|g| g.as_str().parse())
-					.transpose()?;
-				let h = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
-				let m = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
-				let s = cap.get(6).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::from_hms_opt(h, m, s);
-
-				Ok(Ywd { year, week, weekday, time })
-			},
-			DateFormat::CeDay => {
-				let days: i32 = cap.get(1).unwrap().as_str().parse()?;
-				let h = cap.get(2).map(|g| g.as_str().parse()).transpose()?;
-				let m = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
-				let s = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::from_hms_opt(h, m, s);
-
-				Ok(CeDay { days, time })
-			},
-			DateFormat::EpochDay => {
-				let days: i32 = cap.get(1).unwrap().as_str().parse()?;
-				let h = cap.get(2).map(|g| g.as_str().parse()).transpose()?;
-				let m = cap.get(3).map(|g| g.as_str().parse()).transpose()?;
-				let s = cap.get(4).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::from_hms_opt(h, m, s);
-
-				Ok(EpochDay { days, time })
-			},
-			DateFormat::Ymwn => {
-				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
-				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
-					.transpose()?;
-				if month.is_none() {
-					return Ok(GregorianProleptic::Ymd {
-						year,
-						month: None,
-						day: None,
-						time: None,
-					});
-				}
-				let weekday: Option<Weekday> = cap.get(3)
-					.map(|g| g.as_str().parse())
-					.transpose()?;
-				if weekday.is_none() {
-					return Ok(GregorianProleptic::Ymd {
-						year,
-						month,
-						day: None,
-						time: None,
-					});
-				}
-				let month = month.unwrap();
-				let weekday = weekday.unwrap();
-				let n: u8 = cap.get(4).unwrap().as_str().parse()?;
-				let h = cap.get(5).map(|g| g.as_str().parse()).transpose()?;
-				let m = cap.get(6).map(|g| g.as_str().parse()).transpose()?;
-				let s = cap.get(7).map(|g| g.as_str().parse()).transpose()?;
-				let time = ClockTime::from_hms_opt(h, m, s);
-
-				Ok(Ymwn { year, month, weekday, n, time })
-			},
-		}
-	}
-
-	fn into_naive_date_time(self) -> chrono::NaiveDateTime {
-		if let GregorianProleptic::Ymd { year, month, day, time } = self {
-			let t = time.unwrap();
-			// month & day need to be converted to 1-index.
-			let dt = NaiveDate::from_ymd_opt(
-				year,
-				1+month.unwrap(),
-				1+day.unwrap());
-			dt.unwrap()
-				.and_hms_opt(
-					t.hour() as u32,
-					t.minute().unwrap() as u32,
-					t.second().unwrap() as u32)
-				.unwrap()
-		} else {
-			panic!("unsupported enum value");
-		}
-	}
 }
 
 impl Display for GregorianProleptic {
@@ -411,7 +266,7 @@ impl Ord for GregorianProleptic {
 								.expect("get date for start of week");
 							da.cmp(&db)
 						},
-						(None, _, b) => Ordering::Less,
+						(None, _, _) => Ordering::Less,
 					})
 			},
 			
@@ -437,12 +292,146 @@ impl Eq for GregorianProleptic {}
 
 
 impl Calendar for GregorianProleptic {
-	type ParseReq = ParseFormat;
+	type FormatReq = ParseFormat;
 	type ParseErr = GregorianProlepticParseError;
 
-	fn from_str(s: &str, req: &Self::ParseReq) -> Result<Self, Self::ParseErr> {
-		// NOTE: Values are 0-indexed.
-		todo!()
+	fn parse_format(
+		text: &str,
+		format: &Self::FormatReq,
+		re: &Regex,
+		capture_map: &HashMap<usize, usize>)
+		-> Result<Self, Self::ParseErr> 
+	{
+		use GregorianProleptic::*;
+		format.date.validate_capture_group_count(&re)?;
+		let cap = CapturesMap::new(re
+			.captures(&text)
+			.ok_or_else(|| GregorianProlepticParseError::CaptureMatchFailure(
+				text.to_owned().into_boxed_str()))?,
+			&capture_map);
+		match format.date {
+			DateFormat::Ymd => {
+				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
+				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
+					.transpose()?;
+				let day: Option<u32> = cap.get(3).map(|g| g.as_str().parse())
+					.transpose()?;
+
+				let time = cap.get(4).map(|_| {
+					let remap: HashMap<usize, usize> = [(1, 4), (2, 5), (3, 6)]
+						.into_iter()
+						.collect();
+					ClockTime::parse_format(text, &format.time, re, &remap)
+				}).transpose()?;
+
+				Ok(Ymd { year, month, day, time })
+			},
+			DateFormat::Yo => {
+				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
+				let ordinal: Option<u32> = cap.get(2)
+					.map(|g| g.as_str().parse())
+					.transpose()?;
+				if ordinal.is_none() {
+					return Ok(GregorianProleptic::Ymd {
+						year,
+						month: None,
+						day: None,
+						time: None,
+					});
+				}
+				let ordinal = ordinal.unwrap();
+				let time = cap.get(3).map(|_| {
+					let remap: HashMap<usize, usize> = [(1, 3), (2, 4), (3, 5)]
+						.into_iter()
+						.collect();
+					ClockTime::parse_format(text, &format.time, re, &remap)
+				}).transpose()?;
+
+				Ok(Yo { year, ordinal, time })
+			},
+			DateFormat::Ywd => {
+				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
+				let week: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
+					.transpose()?;
+				if week.is_none() {
+					return Ok(GregorianProleptic::Ymd {
+						year,
+						month: None,
+						day: None,
+						time: None,
+					});
+				}
+				let week = week.unwrap();
+				let weekday: Option<Weekday> = cap.get(3)
+					.map(|g| g.as_str().parse())
+					.transpose()?;
+				let time = cap.get(4).map(|_| {
+					let remap: HashMap<usize, usize> = [(1, 4), (2, 5), (3, 6)]
+						.into_iter()
+						.collect();
+					ClockTime::parse_format(text, &format.time, re, &remap)
+				}).transpose()?;
+
+				Ok(Ywd { year, week, weekday, time })
+			},
+			DateFormat::CeDay => {
+				let days: i32 = cap.get(1).unwrap().as_str().parse()?;
+				let time = cap.get(2).map(|_| {
+					let remap: HashMap<usize, usize> = [(1, 2), (2, 3), (3, 4)]
+						.into_iter()
+						.collect();
+					ClockTime::parse_format(text, &format.time, re, &remap)
+				}).transpose()?;
+
+				Ok(CeDay { days, time })
+			},
+			DateFormat::EpochDay => {
+				let days: i32 = cap.get(1).unwrap().as_str().parse()?;
+				let time = cap.get(2).map(|_| {
+					let remap: HashMap<usize, usize> = [(1, 2), (2, 3), (3, 4)]
+						.into_iter()
+						.collect();
+					ClockTime::parse_format(text, &format.time, re, &remap)
+				}).transpose()?;
+
+				Ok(EpochDay { days, time })
+			},
+			DateFormat::Ymwn => {
+				let year: i32 = cap.get(1).unwrap().as_str().parse()?;
+				let month: Option<u32> = cap.get(2).map(|g| g.as_str().parse())
+					.transpose()?;
+				if month.is_none() {
+					return Ok(GregorianProleptic::Ymd {
+						year,
+						month: None,
+						day: None,
+						time: None,
+					});
+				}
+				let weekday: Option<Weekday> = cap.get(3)
+					.map(|g| g.as_str().parse())
+					.transpose()?;
+				if weekday.is_none() {
+					return Ok(GregorianProleptic::Ymd {
+						year,
+						month,
+						day: None,
+						time: None,
+					});
+				}
+				let month = month.unwrap();
+				let weekday = weekday.unwrap();
+				let n: u8 = cap.get(4).unwrap().as_str().parse()?;
+				let time = cap.get(5).map(|_| {
+					let remap: HashMap<usize, usize> = [(1, 5), (2, 7), (3, 8)]
+						.into_iter()
+						.collect();
+					ClockTime::parse_format(text, &format.time, re, &remap)
+				}).transpose()?;
+
+				Ok(Ymwn { year, month, weekday, n, time })
+			},
+		}
 	}
 
 	fn earliest(&self) -> Self {
@@ -540,11 +529,26 @@ pub enum DateFormat {
 	Ymwn,
 }
 
+
+impl std::fmt::Display for DateFormat {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			DateFormat::Ymd      => write!(f, "Ymd"),
+			DateFormat::Yo       => write!(f, "Yo"),
+			DateFormat::Ywd      => write!(f, "Ywd"),
+			DateFormat::CeDay    => write!(f, "CeDay"),
+			DateFormat::EpochDay => write!(f, "EpochDay"),
+			DateFormat::Ymwn     => write!(f, "Ymwn"),
+		}
+	}
+}
+
+
 impl DateFormat {
 	/// Validates the `Regex`, ensuring it contains the necessary number of
 	/// capture groups to parse the `GregorianProleptic` format.
 	fn validate_capture_group_count(&self, re: &Regex)
-		-> Result<usize, CaptureGroupCountError>
+		-> Result<usize, CaptureGroupCountError<DateFormat>>
 	{
 		let len = re.captures_len();
 		let (min, max) = match self {
@@ -581,13 +585,14 @@ impl DateFormat {
 #[derive(Debug, Clone)]
 pub enum GregorianProlepticParseError {
 	CaptureMatchFailure(Box<str>),
-	CaptureGroupCountError(CaptureGroupCountError),
+	CaptureGroupCountError(CaptureGroupCountError<DateFormat>),
+	ClockTimeParseError(ClockTimeParseError),
 	ParseIntError(ParseIntError),
 	ParseWeekdayError(ParseWeekdayError),
 }
 
-impl From<CaptureGroupCountError> for GregorianProlepticParseError {
-	fn from(e: CaptureGroupCountError) -> Self {
+impl From<CaptureGroupCountError<DateFormat>> for GregorianProlepticParseError {
+	fn from(e: CaptureGroupCountError<DateFormat>) -> Self {
 		GregorianProlepticParseError::CaptureGroupCountError(e)
 	}
 }
@@ -604,6 +609,12 @@ impl From<ParseWeekdayError> for GregorianProlepticParseError {
 	}
 }
 
+impl From<ClockTimeParseError> for GregorianProlepticParseError {
+	fn from(e: ClockTimeParseError) -> Self {
+		GregorianProlepticParseError::ClockTimeParseError(e)
+	}
+}
+
 impl Display for GregorianProlepticParseError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		// NOTE: Values are 0-indexed.
@@ -614,31 +625,6 @@ impl Display for GregorianProlepticParseError {
 impl std::error::Error for GregorianProlepticParseError {}
 
 
-/// An incorrect number of capture groups have been provided for the calendar
-/// parser.
-#[derive(Debug, Clone, Copy)]
-pub struct CaptureGroupCountError {
-	/// The time format.
-	pub format: DateFormat,
-	/// The minimum number of capture groups to use.
-	pub min: u8,
-	/// The maximum number of capture groups to use.
-	pub max: u8,
-}
-
-impl Display for CaptureGroupCountError {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		if self.min == self.max {
-			write!(f, "invalid capture group count for format {:?}: \
-				expected {} groups", self.format, self.min)
-		} else {
-			write!(f, "invalid capture group count for format {:?}: \
-				expected {} to {} groups", self.format, self.min, self.max)
-		}
-	}
-}
-
-impl std::error::Error for CaptureGroupCountError {}
 
 
 

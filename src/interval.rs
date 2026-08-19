@@ -11,12 +11,14 @@
 use crate::EntryId;
 
 // External library imports.
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 
 // Standard Library imports.
-use std::fmt::Display;
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,15 +45,24 @@ impl Default for CalendarSystem {
 /// A representation of a time period suitable for potentially imprecise moments
 /// in time.
 pub trait Calendar: Debug + Display + Clone + PartialOrd + PartialEq + 'static {
-	/// Data provided for fulfilling parse requests.
-	type ParseReq;
+	/// Data provided for specifying the format requirements of the calendar
+	/// value.
+	type FormatReq;
 
 	/// The associated error which can be returned from parsing.
 	type ParseErr: std::error::Error;
 
 
 	/// Parse a calendar value from a string.
-	fn from_str(s: &str, req: &Self::ParseReq) -> Result<Self, Self::ParseErr>;
+	///
+	/// The user-provided `FormatReq`, `Regex`, and capture map are provided to
+	/// determine the expected format of the input text.
+	fn parse_format(
+		s: &str,
+		req: &Self::FormatReq,
+		regex: &Regex,
+		capture_map: &HashMap<usize, usize>)
+		-> Result<Self, Self::ParseErr>;
 
 	/// The earliest point of the calendar period, resolved to the highest
 	/// granularity supported by the calendar.
@@ -127,8 +138,14 @@ impl<C> TimeInterval<C>
 		}
 	}
 
-	pub fn from_str(s: &str, req: &C::ParseReq) -> Result<Self, C::ParseErr> {
-		Ok(Self::from(C::from_str(s, req)?.into()))
+	pub fn parse_format(
+		text: &str,
+		format: &C::FormatReq,
+		re: &Regex,
+		capture_map: &HashMap<usize, usize>)
+		-> Result<Self, C::ParseErr>
+	{
+		Ok(Self::from(C::parse_format(text, format, re, capture_map)?.into()))
 	}
 }
 

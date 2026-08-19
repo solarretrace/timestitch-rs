@@ -13,6 +13,8 @@
 
 // Internal library imports.
 use crate::Calendar;
+use crate::error::CaptureGroupCountError;
+use crate::util::CapturesMap;
 
 // External library imports.
 use serde::Deserialize;
@@ -21,6 +23,7 @@ use regex::Regex;
 
 // Standard library imports.
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::num::ParseIntError;
 use std::sync::OnceLock;
 
@@ -53,6 +56,16 @@ impl TimeFormat {
 		}
 	}
 }
+
+impl std::fmt::Display for TimeFormat {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			TimeFormat::Hours12 => write!(f, "12-hour"),
+			TimeFormat::Hours24 => write!(f, "24-hour"),
+		}
+	}
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // ClockTime
@@ -323,33 +336,34 @@ impl PartialEq for ClockTime {
 impl Eq for ClockTime {}
 
 
-static CLOCKTIME_PARSE_RE: OnceLock<Regex> = OnceLock::new();
-
 impl Calendar for ClockTime {
-	type ParseReq = TimeFormat;
+	type FormatReq = TimeFormat;
 	type ParseErr = ClockTimeParseError;
 
-	fn from_str(s: &str, req: &TimeFormat) -> Result<Self, Self::ParseErr> {
-		let re = CLOCKTIME_PARSE_RE.get_or_init(||
-			Regex::new("(\\d?\\d)(?::(\\d\\d))?(?::(\\d\\d))?\\b").unwrap());
-		let caps = re.captures(s).ok_or(ClockTimeParseError::InvalidClockTime)?;
+	fn parse_format(
+		text: &str,
+		format: &Self::FormatReq,
+		re: &Regex,
+		capture_map: &HashMap<usize, usize>)
+		-> Result<Self, Self::ParseErr> 
+	{
+		let cap = CapturesMap::new(re
+			.captures(&text)
+			.ok_or_else(|| ClockTimeParseError::CaptureMatchFailure(
+				text.to_owned().into_boxed_str()))?,
+			&capture_map);
 		
-		let hour = req.validate_hour(caps
-			.get(1)
-			.unwrap()
-			.as_str()
-			.parse::<u8>()?)?;
-
-		let minute = caps.get(2).map(|c| c.as_str().parse::<u8>()).transpose()?;
-		if minute.is_some_and(|m| m >= 60) {
+		let hour = cap.get(1).map(|g| g.as_str().parse::<u8>()).transpose()?
+			.ok_or(ClockTimeParseError::InvalidClockTime)?;
+		let hour = format.validate_hour(hour)?;
+		let minute = cap.get(2).map(|g| g.as_str().parse::<u8>()).transpose()?;
+		if minute.is_some_and(|s| s >= 60) {
 			return Err(ClockTimeParseError::InvalidClockTime);
 		}
-		
-		let second = caps.get(3).map(|c| c.as_str().parse::<u8>()).transpose()?;
+		let second = cap.get(3).map(|g| g.as_str().parse::<u8>()).transpose()?;
 		if second.is_some_and(|s| s >= 60) {
 			return Err(ClockTimeParseError::InvalidClockTime);
 		}
-
 		Ok(Self { hour, minute, second })
 	}
 
@@ -369,6 +383,8 @@ impl Calendar for ClockTime {
 #[derive(Debug, Clone)]
 pub enum ClockTimeParseError {
 	InvalidClockTime,
+	CaptureMatchFailure(Box<str>),
+	CaptureGroupCountError(CaptureGroupCountError<TimeFormat>),
 	ParseIntError(ParseIntError),
 }
 

@@ -9,6 +9,7 @@
 
 // Internal modules.
 mod clock;
+mod error;
 mod gregorian;
 mod interval;
 mod record;

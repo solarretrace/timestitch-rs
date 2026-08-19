@@ -54,6 +54,25 @@ pub struct Config {
 	/// The path for the prefs file.
 	#[serde(default = "Config::default_prefs_path")]
 	pub prefs_path: PathBuf,
+
+	/// Whether to scan the contents of provided directories for additional
+	/// input sources.
+	#[serde(default = "Config::default_expand_directories")]
+	pub expand_directories: bool,
+
+	/// Whether to scan the contents of discovered directories recursively for
+	/// additional input sources.
+	#[serde(default = "Config::default_expand_recursive")]
+	pub expand_recursive: bool,
+
+	/// Whether to skip processing any non-normal discovered files.
+	#[serde(default = "Config::default_skip_nonnormal_files")]
+	pub skip_nonnormal_files: bool,
+
+	/// Whether to fail when an input source cannot be processed, or ignore the
+	/// data.
+	#[serde(default = "Config::default_fail_on_error")]
+	pub fail_on_error: bool,
 }
 
 
@@ -76,14 +95,22 @@ impl Config {
 	pub const DEFAULT_PREFS_PATH: &'static str = "timestitch.toml";
 
 	/// The default format for the config file.
-	///
-	/// [`Prefs`]: crate::application::Prefs
 	pub const DEFAULT_CONFIG_FORMAT: Format = Format::Toml;
 
 	/// The default format for the prefs file.
-	///
-	/// [`Prefs`]: crate::application::Prefs
 	pub const DEFAULT_PREFS_FORMAT: Format = Format::Toml;
+
+	/// The default value for expand_directories.
+	pub const DEFAULT_EXPAND_DIRECTORIES: bool = true;
+
+	/// The default value for expand_recursive.
+	pub const DEFAULT_EXPAND_RECURSIVE: bool = true;
+	
+	/// The default value for skip_nonnormal_files.
+	pub const DEFAULT_SKIP_NONNORMAL_FILES: bool = true;
+	
+	/// The default value for fail_on_error.
+	pub const DEFAULT_FAIL_ON_ERROR: bool = true;
 
 	/// Constructs a new `Config` with the default options.
 	#[must_use]
@@ -94,6 +121,10 @@ impl Config {
 			trace_config: Self::default_trace_config(),
 			prefs_format: Self::default_prefs_format(),
 			prefs_path: Self::default_prefs_path(),
+			expand_directories: Self::default_expand_directories(),
+			expand_recursive: Self::default_expand_recursive(),
+			skip_nonnormal_files: Self::default_skip_nonnormal_files(),
+			fail_on_error: Self::default_fail_on_error(),
 		}
 	}
 
@@ -376,6 +407,26 @@ impl Config {
 	fn default_prefs_path() -> PathBuf {
 		PathBuf::from(Self::DEFAULT_PREFS_PATH)
 	}
+
+	/// The default value for expand_directories.
+	const fn default_expand_directories() -> bool {
+		Self::DEFAULT_EXPAND_DIRECTORIES
+	}
+
+	/// The default value for expand_recursive.
+	const fn default_expand_recursive() -> bool {
+		Self::DEFAULT_EXPAND_RECURSIVE
+	}
+	
+	/// The default value for skip_nonnormal_files.
+	const fn default_skip_nonnormal_files() -> bool {
+		Self::DEFAULT_SKIP_NONNORMAL_FILES
+	}
+	
+	/// The default value for fail_on_error.
+	const fn default_fail_on_error() -> bool {
+		Self::DEFAULT_FAIL_ON_ERROR
+	}
 }
 
 impl std::fmt::Display for Config {
@@ -395,7 +446,14 @@ impl std::fmt::Display for Config {
 			self.prefs_format)?;
 		writeln!(fmt, "\tprefs_path: {:?}", 
 			self.prefs_path)?;
-
+		writeln!(fmt, "\texpand_directories: {:?}", 
+			self.expand_directories)?;
+		writeln!(fmt, "\texpand_recursive: {:?}", 
+			self.expand_recursive)?;
+		writeln!(fmt, "\tskip_nonnormal_files: {:?}", 
+			self.skip_nonnormal_files)?;
+		writeln!(fmt, "\tfail_on_error: {:?}", 
+			self.fail_on_error)?;
 		Ok(())
 	}
 }

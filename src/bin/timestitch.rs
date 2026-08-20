@@ -11,7 +11,7 @@
 use timestitch::application::CliOpts;
 use timestitch::application::Config;
 use timestitch::application::Prefs;
-use timestitch::application::process_files;
+use timestitch::application::process_args;
 use timestitch::application::write_table;
 use timestitch::application::TraceGuard;
 use timestitch::GregorianProleptic;
@@ -153,12 +153,14 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 
 	
 	println!("{}", prefs);
+	let mut errors = Vec::new();
 	match prefs.calendar_system {
 		CalendarSystem::GregorianProleptic => {
-			let entries: Vec<Entry<GregorianProleptic>> = process_files(
+			let entries: Vec<Entry<GregorianProleptic>> = process_args(
 				&config,
 				&prefs,
 				&opts,
+				&mut errors,
 				opts.files.iter().map(|p| p.as_path()))?;
 
 			println!("{:?}", entries);

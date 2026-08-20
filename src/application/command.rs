@@ -8,7 +8,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // External library imports.
-use clap::ArgAction;
 use clap::Parser;
 use serde::Deserialize;
 use serde::Serialize;

@@ -261,6 +261,7 @@ fn process_file<C>(
 		},
 	};
 
+	// Process entries.
 	match process_entries(
 			path_str.as_ref(),
 			path_captures, 

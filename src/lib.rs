@@ -11,8 +11,8 @@
 mod clock;
 mod error;
 mod gregorian;
-mod interval;
 mod record;
+mod time;
 mod util;
 pub mod application;
 
@@ -20,4 +20,4 @@ pub mod application;
 pub use clock::*;
 pub use gregorian::*;
 pub use record::*;
-pub use interval::*;
+pub use time::*;

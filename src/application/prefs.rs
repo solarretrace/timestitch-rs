@@ -50,10 +50,6 @@ pub struct Prefs {
 	#[serde(default)]
 	pub calendar_system: CalendarSystem,
 
-	/// A regular expression for parsing calendar periods from entry sources.
-	#[serde(default)]
-	pub calendar_parse_pattern: Option<Box<str>>,
-
 	/// A regular expression for capturing entry data from a file path.
 	#[serde(default)]
 	pub path_source_pattern: Option<Box<str>>,
@@ -85,8 +81,6 @@ pub struct Prefs {
 	/// source.
 	#[serde(default)]
 	pub entry_attribute_sources: BTreeMap<Box<str>, MatchSourceAttribute>,
-
-
 }
 
 
@@ -105,7 +99,6 @@ impl Prefs {
 				.with_format(Config::DEFAULT_PREFS_FORMAT),
 
 			calendar_system: CalendarSystem::default(),
-			calendar_parse_pattern: None,
 
 			path_source_pattern: None,
 			content_split_pattern: None,
@@ -382,8 +375,6 @@ impl std::fmt::Display for Prefs {
 	fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		writeln!(fmt, "Prefs:")?;
 		writeln!(fmt, "\tcalendar_system: {:?}", self.calendar_system)?;
-		writeln!(fmt, "\tcalendar_parse_pattern: {:?}",
-			self.calendar_parse_pattern)?;
 		writeln!(fmt, "\tpath_source_pattern: {:?}", self.path_source_pattern)?;
 		writeln!(fmt, "\tcontent_split_pattern: {:?}",
 			self.content_split_pattern)?;

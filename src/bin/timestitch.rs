@@ -12,11 +12,12 @@ use timestitch::application::CliOpts;
 use timestitch::application::Config;
 use timestitch::application::Prefs;
 use timestitch::application::process_args;
-use timestitch::application::write_table;
 use timestitch::application::TraceGuard;
-use timestitch::gregorian::GregorianProleptic;
-use timestitch::Entry;
+use timestitch::application::write_table;
 use timestitch::CalendarSystem;
+use timestitch::clock::ClockTime;
+use timestitch::Entry;
+use timestitch::gregorian::GregorianProleptic;
 
 // External library imports.
 use anyhow::Context;
@@ -156,13 +157,30 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 	println!("{}", prefs);
 	let mut errors = Vec::new();
 	match &prefs.calendar_system {
-		CalendarSystem::GregorianProleptic { pattern, format } => {
+		CalendarSystem::GregorianProleptic { pattern, pattern_map, format } => {
 			let entries: Vec<Entry<GregorianProleptic>> = process_args(
 				&config,
 				&prefs,
 				&opts,
 				&mut errors,
 				Regex::new(pattern)?,
+				pattern_map.clone(),
+				format.clone(),
+				opts.files.iter().map(|p| p.as_path()))?;
+
+			println!("{:?}", entries);
+			let mut out = std::io::stdout();
+			write_table(&config, &prefs, &mut out, entries.into_iter())
+		},
+
+		CalendarSystem::ClockTime { pattern, pattern_map, format } => {
+			let entries: Vec<Entry<ClockTime>> = process_args(
+				&config,
+				&prefs,
+				&opts,
+				&mut errors,
+				Regex::new(pattern)?,
+				pattern_map.clone(),
 				format.clone(),
 				opts.files.iter().map(|p| p.as_path()))?;
 

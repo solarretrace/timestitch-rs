@@ -9,6 +9,7 @@
 
 // Internal library imports.
 use crate::clock::TimeFormat;
+use crate::clock::ClockTime;
 use crate::gregorian::DateFormat;
 use crate::gregorian::GregorianProleptic;
 use crate::gregorian::ParseFormat;
@@ -69,15 +70,31 @@ pub trait Calendar: Debug + Display + Clone + PartialOrd + PartialEq + 'static {
 pub enum CalendarSystem {
 	/// The gregorian proleptic calendar in the given format.
 	GregorianProleptic {
+		/// The regex pattern generating the calendar format capture groups.
 		pattern: Box<str>,
-		format: <GregorianProleptic as Calendar>::FormatReq
+		/// The capture groups index map.
+		#[serde(default)]
+		pattern_map: HashMap<usize, usize>,
+		/// The Calendar data format.
+		format: <GregorianProleptic as Calendar>::FormatReq,
 	},
+	/// The clock time calendar in the given format.
+	ClockTime {
+		/// The regex pattern generating the calendar format capture groups.
+		pattern: Box<str>,
+		/// The capture groups index map.
+		#[serde(default)]
+		pattern_map: HashMap<usize, usize>,
+		/// The Calendar data format.
+		format: <ClockTime as Calendar>::FormatReq,
+	}
 }
 
 impl Default for CalendarSystem {
 	fn default() -> Self {
 		Self::GregorianProleptic {
 			pattern: ".*".to_string().into_boxed_str(),
+			pattern_map: HashMap::new(),
 			format: ParseFormat {
 				date: DateFormat::Ymd,
 				time: TimeFormat::Hours24,

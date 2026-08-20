@@ -28,6 +28,7 @@ use regex::Captures;
 
 // Standard library imports.
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read as _;
 use std::path::Path;
@@ -46,6 +47,7 @@ pub fn process_args<'a, I, C>(
 	opts: &CliOpts,
 	errors: &mut Vec<Error>,
 	calendar_pattern: Regex,
+	calendar_pattern_map: HashMap<usize, usize>,
 	calendar_parse_fmt: C::FormatReq,
 	paths: I)
 	-> Result<Vec<Entry<C>>, Error>
@@ -80,6 +82,7 @@ pub fn process_args<'a, I, C>(
 		content_split_pattern,
 		content_source_patterns,
 		calendar_pattern,
+		calendar_pattern_map,
 		calendar_parse_fmt,
 	};
 
@@ -445,6 +448,8 @@ struct Resources<P> {
 	pub content_source_patterns: Vec<Regex>,
 	/// The compiled calendar pattern.
 	pub calendar_pattern: Regex,
+	/// The calendar pattern capture group map.
+	pub calendar_pattern_map: HashMap<usize, usize>,
 	/// The calendar value parse format information.
 	pub calendar_parse_fmt: P,
 }

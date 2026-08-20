@@ -46,18 +46,26 @@ pub struct Prefs {
 	#[serde(skip)]
 	load_status: LoadStatus,
 
+	/// The `CalendarSystem` to use for decoding & ordering times.
+	#[serde(default)]
+	pub calendar_system: CalendarSystem,
+
+	/// A regular expression for parsing calendar periods from entry sources.
+	#[serde(default)]
+	pub calendar_parse_pattern: Option<Box<str>>,
+
 	/// A regular expression for capturing entry data from a file path.
 	#[serde(default)]
-	pub path_matcher: Option<Box<str>>,
+	pub path_source_pattern: Option<Box<str>>,
 
 	/// A regular expression for splitting files into multiple entry sources.
 	#[serde(default)]
-	pub content_split: Option<Box<str>>,
+	pub content_split_pattern: Option<Box<str>>,
 
 	/// Regular expressions for capturing entry data from the lines of an entry
 	/// source.
 	#[serde(default)]
-	pub content_line_matchers: Vec<Option<Box<str>>>,
+	pub content_source_patterns: Vec<Option<Box<str>>>,
 
 	/// The method to use for resolving an `Entry` ID from an entry source.
 	#[serde(default)]
@@ -78,9 +86,7 @@ pub struct Prefs {
 	#[serde(default)]
 	pub entry_attribute_sources: BTreeMap<Box<str>, MatchSourceAttribute>,
 
-	/// The `CalendarSystem` to use for decoding & ordering times.
-	#[serde(default)]
-	pub calendar_system: CalendarSystem,
+
 }
 
 
@@ -98,15 +104,17 @@ impl Prefs {
 			load_status: LoadStatus::default()
 				.with_format(Config::DEFAULT_PREFS_FORMAT),
 
-			path_matcher: None,
-			content_split: None,
-			content_line_matchers: Vec::new(),
+			calendar_system: CalendarSystem::default(),
+			calendar_parse_pattern: None,
+
+			path_source_pattern: None,
+			content_split_pattern: None,
+			content_source_patterns: Vec::new(),
 
 			entry_id_source: MatchSource::Default,
 			entry_time_source: MatchSource::Default,
 			entry_ref_source: None,
 			entry_attribute_sources: BTreeMap::new(),
-			calendar_system: CalendarSystem::default(),
 		}
 	}
 
@@ -373,16 +381,19 @@ impl Prefs {
 impl std::fmt::Display for Prefs {
 	fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		writeln!(fmt, "Prefs:")?;
-		writeln!(fmt, "\tpath_matcher: {:?}", self.path_matcher)?;
-		writeln!(fmt, "\tcontent_split: {:?}", self.content_split)?;
-		writeln!(fmt, "\tcontent_line_matchers: ")?;
-		for m in &self.content_line_matchers {
+		writeln!(fmt, "\tcalendar_system: {:?}", self.calendar_system)?;
+		writeln!(fmt, "\tcalendar_parse_pattern: {:?}",
+			self.calendar_parse_pattern)?;
+		writeln!(fmt, "\tpath_source_pattern: {:?}", self.path_source_pattern)?;
+		writeln!(fmt, "\tcontent_split_pattern: {:?}",
+			self.content_split_pattern)?;
+		writeln!(fmt, "\tcontent_source_patterns: ")?;
+		for m in &self.content_source_patterns {
 			writeln!(fmt, "\t\t{:?}", m)?;
 		}
 		writeln!(fmt, "\tentry_id_source: {:?}", self.entry_id_source)?;
 		writeln!(fmt, "\tentry_time_source: {:?}", self.entry_time_source)?;
 		writeln!(fmt, "\tentry_ref_source: {:?}", self.entry_ref_source)?;
-		writeln!(fmt, "\tcalendar_system: {:?}", self.calendar_system)?;
 		writeln!(fmt, "\tentry_attribute_sources: ")?;
 		for (k, v) in &self.entry_attribute_sources {
 			writeln!(fmt, "\t\t{:?} => {:?}", k, v)?;

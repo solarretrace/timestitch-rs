@@ -54,18 +54,18 @@ pub fn process_args<'a, I, C>(
 {
 	// Compile resources.
 	let re_all: Regex = Regex::new(".*").unwrap();
-	let path_matcher = prefs
-		.path_matcher
+	let path_source_pattern = prefs
+		.path_source_pattern
 		.as_ref()
 		.map(|m| Regex::new(m))
 		.transpose()?;
-	let content_split = prefs
-		.content_split
+	let content_split_pattern = prefs
+		.content_split_pattern
 		.as_ref()
 		.map(|m| Regex::new(m))
 		.transpose()?;
-	let content_line_matchers = prefs
-		.content_line_matchers
+	let content_source_patterns = prefs
+		.content_source_patterns
 		.iter()
 		.map(|matcher| matcher
 			.as_deref()
@@ -74,9 +74,9 @@ pub fn process_args<'a, I, C>(
 		.collect::<Result<Vec<_>, _>>()?;
 
 	let mut res = Resources {
-		path_matcher: path_matcher.unwrap_or(re_all),
-		content_split: content_split,
-		content_line_matchers: content_line_matchers,
+		path_source_pattern: path_source_pattern.unwrap_or(re_all),
+		content_split_pattern: content_split_pattern,
+		content_source_patterns: content_source_patterns,
 	};
 
 	// Generate entries from the provided paths.
@@ -223,7 +223,7 @@ fn process_file<C>(
 {
 	// Setup matching for the file path.
 	let path_str = path.to_string_lossy();
-	let path_captures = res.path_matcher
+	let path_captures = res.path_source_pattern
 		.captures(&path_str)
 		.expect("construct path capture groups");
 
@@ -293,15 +293,17 @@ fn process_entries<C>(
 		C: Calendar,
 		C::ParseErr: Send + Sync + 'static
 {
-	let split_contents = match res.content_split.as_ref() {
+	// Split the file text into its data source sections.
+	let split_contents = match res.content_split_pattern.as_ref() {
 		Some(re) => Either::Left(re.split(text)),
 		None     => Either::Right(std::iter::once(text)),
 	};
 
-	// We need to emit entries from this file? How many?
+	// TODO: We only handle emitting a single entry from the file. How do we
+	// construct multiple entries from the same file? When do we try this?
 	for source in split_contents {
 		let line_captures: Vec<Option<_>> = source.lines()
-			.zip(res.content_line_matchers.iter())
+			.zip(res.content_source_patterns.iter())
 			.map(|(l, re)| re.captures(l))
 			.collect();
 
@@ -432,9 +434,9 @@ fn process_entries<C>(
 #[derive(Debug, Clone)]
 struct Resources {
 	/// The compiled path matcher.
-	pub path_matcher: Regex,
+	pub path_source_pattern: Regex,
 	/// The compiled content splitter.
-	pub content_split: Option<Regex>,
+	pub content_split_pattern: Option<Regex>,
 	/// The compiled content line matchers.
-	pub content_line_matchers: Vec<Regex>,
+	pub content_source_patterns: Vec<Regex>,
 }

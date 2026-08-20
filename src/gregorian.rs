@@ -13,11 +13,11 @@
 
 // Internal library imports.
 use crate::Calendar;
-use crate::ClockTime;
-use crate::ClockTimeParseError;
-use crate::TimeFormat;
-use crate::util::CapturesMap;
+use crate::clock::ClockTime;
+use crate::clock::ClockTimeParseError;
+use crate::clock::TimeFormat;
 use crate::error::CaptureGroupCountError;
+use crate::util::CapturesMap;
 
 // External library imports.
 use serde::Deserialize;
@@ -506,9 +506,9 @@ impl Calendar for GregorianProleptic {
 #[derive(Deserialize, Serialize)]
 pub struct ParseFormat {
 	/// The format for the date.
-	date: DateFormat,
+	pub date: DateFormat,
 	/// The format for the time.
-	time: TimeFormat,
+	pub time: TimeFormat,
 }
 
 /// A parseable `GregorianProleptic` calendar date format.
@@ -623,10 +623,6 @@ impl Display for GregorianProlepticParseError {
 }
 
 impl std::error::Error for GregorianProlepticParseError {}
-
-
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -45,6 +45,8 @@ pub fn process_args<'a, I, C>(
 	prefs: &Prefs,
 	opts: &CliOpts,
 	errors: &mut Vec<Error>,
+	calendar_pattern: Regex,
+	calendar_parse_fmt: C::FormatReq,
 	paths: I)
 	-> Result<Vec<Entry<C>>, Error>
 	where
@@ -75,8 +77,10 @@ pub fn process_args<'a, I, C>(
 
 	let mut res = Resources {
 		path_source_pattern: path_source_pattern.unwrap_or(re_all),
-		content_split_pattern: content_split_pattern,
-		content_source_patterns: content_source_patterns,
+		content_split_pattern,
+		content_source_patterns,
+		calendar_pattern,
+		calendar_parse_fmt,
 	};
 
 	// Generate entries from the provided paths.
@@ -102,7 +106,7 @@ fn process_path<C>(
 	opts: &CliOpts,
 	entries: &mut Vec<Entry<C>>,
 	errors: &mut Vec<Error>,
-	res: &mut Resources,
+	res: &mut Resources<C::FormatReq>,
 	is_recursive_dir: bool)
 	-> Result<(), Error>
 	where
@@ -167,7 +171,7 @@ fn process_directory<C>(
 	opts: &CliOpts,
 	entries: &mut Vec<Entry<C>>,
 	errors: &mut Vec<Error>,
-	res: &mut Resources)
+	res: &mut Resources<C::FormatReq>)
 	-> Result<(), Error>
 	where
 		C: Calendar,
@@ -215,7 +219,7 @@ fn process_file<C>(
 	opts: &CliOpts,
 	entries: &mut Vec<Entry<C>>,
 	errors: &mut Vec<Error>,
-	res: &mut Resources)
+	res: &mut Resources<C::FormatReq>)
 	-> Result<(), Error>
 	where
 		C: Calendar,
@@ -287,7 +291,7 @@ fn process_entries<C>(
 	text: &str,
 	prefs: &Prefs,
 	entries: &mut Vec<Entry<C>>,
-	res: &mut Resources)
+	res: &mut Resources<C::FormatReq>)
 	-> Result<(), Error>
 	where
 		C: Calendar,
@@ -432,11 +436,15 @@ fn process_entries<C>(
 ////////////////////////////////////////////////////////////////////////////////
 /// Resources used for processing entries.
 #[derive(Debug, Clone)]
-struct Resources {
-	/// The compiled path matcher.
+struct Resources<P> {
+	/// The compiled path pattern.
 	pub path_source_pattern: Regex,
-	/// The compiled content splitter.
+	/// The compiled content splitter pattern.
 	pub content_split_pattern: Option<Regex>,
-	/// The compiled content line matchers.
+	/// The compiled content line patterns.
 	pub content_source_patterns: Vec<Regex>,
+	/// The compiled calendar pattern.
+	pub calendar_pattern: Regex,
+	/// The calendar value parse format information.
+	pub calendar_parse_fmt: P,
 }

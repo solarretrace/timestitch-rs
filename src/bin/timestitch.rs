@@ -14,15 +14,16 @@ use timestitch::application::Prefs;
 use timestitch::application::process_args;
 use timestitch::application::write_table;
 use timestitch::application::TraceGuard;
-use timestitch::GregorianProleptic;
+use timestitch::gregorian::GregorianProleptic;
 use timestitch::Entry;
 use timestitch::CalendarSystem;
 
 // External library imports.
 use anyhow::Context;
 use anyhow::Error;
-use clap::Parser;
 use clap::error::ErrorKind;
+use clap::Parser;
+use regex::Regex;
 use tracing::event;
 use tracing::Level;
 use tracing::span;
@@ -154,13 +155,15 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 	
 	println!("{}", prefs);
 	let mut errors = Vec::new();
-	match prefs.calendar_system {
-		CalendarSystem::GregorianProleptic => {
+	match &prefs.calendar_system {
+		CalendarSystem::GregorianProleptic { pattern, format } => {
 			let entries: Vec<Entry<GregorianProleptic>> = process_args(
 				&config,
 				&prefs,
 				&opts,
 				&mut errors,
+				Regex::new(pattern)?,
+				format.clone(),
 				opts.files.iter().map(|p| p.as_path()))?;
 
 			println!("{:?}", entries);

@@ -8,16 +8,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Internal modules.
-mod clock;
+mod calendar;
+pub mod clock;
 mod error;
-mod gregorian;
+pub mod gregorian;
 mod record;
 mod time;
 mod util;
 pub mod application;
 
 // Exports.
-pub use clock::*;
-pub use gregorian::*;
+pub use calendar::*;
 pub use record::*;
 pub use time::*;

@@ -9,6 +9,7 @@
 
 // Internal library imports.
 use crate::EntryId;
+use crate::Calendar;
 
 // External library imports.
 use regex::Regex;
@@ -20,58 +21,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fmt::Display;
 
-
-////////////////////////////////////////////////////////////////////////////////
-// CalendarSystem
-////////////////////////////////////////////////////////////////////////////////
-/// Supported parseable calendar types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Deserialize, Serialize)]
-pub enum CalendarSystem {
-	/// The gregorian proleptic calendar.
-	GregorianProleptic,
-}
-
-impl Default for CalendarSystem {
-	fn default() -> Self {
-		Self::GregorianProleptic
-	}
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Calendar
-////////////////////////////////////////////////////////////////////////////////
-/// A representation of a time period suitable for potentially imprecise moments
-/// in time.
-pub trait Calendar: Debug + Display + Clone + PartialOrd + PartialEq + 'static {
-	/// Data provided for specifying the format requirements of the calendar
-	/// value.
-	type FormatReq;
-
-	/// The associated error which can be returned from parsing.
-	type ParseErr: std::error::Error;
-
-
-	/// Parse a calendar value from a string.
-	///
-	/// The user-provided `FormatReq`, `Regex`, and capture map are provided to
-	/// determine the expected format of the input text.
-	fn parse_format(
-		s: &str,
-		req: &Self::FormatReq,
-		regex: &Regex,
-		capture_map: &HashMap<usize, usize>)
-		-> Result<Self, Self::ParseErr>;
-
-	/// The earliest point of the calendar period, resolved to the highest
-	/// granularity supported by the calendar.
-	fn earliest(&self) -> Self;
-
-	/// The latest point of the calendar period, resolved to the highest
-	/// granularity supported by the calendar.
-	fn latest(&self) -> Self;
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////

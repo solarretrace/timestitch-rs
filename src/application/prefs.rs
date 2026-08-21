@@ -50,19 +50,6 @@ pub struct Prefs {
 	#[serde(default)]
 	pub calendar_system: CalendarSystem,
 
-	/// A regular expression for capturing entry data from a file path.
-	#[serde(default)]
-	pub path_source_pattern: Option<Box<str>>,
-
-	/// A regular expression for splitting files into multiple entry sources.
-	#[serde(default)]
-	pub content_split_pattern: Option<Box<str>>,
-
-	/// Regular expressions for capturing entry data from the lines of an entry
-	/// source.
-	#[serde(default)]
-	pub content_source_patterns: Vec<Option<Box<str>>>,
-
 	/// The method to use for resolving an `Entry` ID from an entry source.
 	#[serde(default)]
 	pub entry_id_source: MatchSource,
@@ -99,10 +86,6 @@ impl Prefs {
 				.with_format(Config::DEFAULT_PREFS_FORMAT),
 
 			calendar_system: CalendarSystem::default(),
-
-			path_source_pattern: None,
-			content_split_pattern: None,
-			content_source_patterns: Vec::new(),
 
 			entry_id_source: MatchSource::Default,
 			entry_time_source: MatchSource::Default,
@@ -375,13 +358,6 @@ impl std::fmt::Display for Prefs {
 	fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		writeln!(fmt, "Prefs:")?;
 		writeln!(fmt, "\tcalendar_system: {:?}", self.calendar_system)?;
-		writeln!(fmt, "\tpath_source_pattern: {:?}", self.path_source_pattern)?;
-		writeln!(fmt, "\tcontent_split_pattern: {:?}",
-			self.content_split_pattern)?;
-		writeln!(fmt, "\tcontent_source_patterns: ")?;
-		for m in &self.content_source_patterns {
-			writeln!(fmt, "\t\t{:?}", m)?;
-		}
 		writeln!(fmt, "\tentry_id_source: {:?}", self.entry_id_source)?;
 		writeln!(fmt, "\tentry_time_source: {:?}", self.entry_time_source)?;
 		writeln!(fmt, "\tentry_ref_source: {:?}", self.entry_ref_source)?;

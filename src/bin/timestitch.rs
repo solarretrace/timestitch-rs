@@ -47,7 +47,7 @@ pub fn main() {
 
 		// Print errors to stderr and exit with error code.
 		colored::control::unset_override();
-		eprintln!("{:?}", err);
+		eprintln!("ERROR: {:?}", err);
 		
 		let exit_code = match err.downcast::<clap::Error>()
 			.map(|e| e.kind())
@@ -168,7 +168,8 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 				format.clone(),
 				opts.files.iter().map(|p| p.as_path()))?;
 
-			println!("{:?}", entries);
+			//println!("{:?}", entries);
+			//println!("{:?}", errors);
 			let mut out = std::io::stdout();
 			write_table(&config, &prefs, &mut out, entries.into_iter())
 		},
@@ -184,7 +185,8 @@ pub fn main_facade(trace_guard: &mut TraceGuard) -> Result<(), Error> {
 				format.clone(),
 				opts.files.iter().map(|p| p.as_path()))?;
 
-			println!("{:?}", entries);
+			//println!("{:?}", entries);
+			//println!("{:?}", errors);
 			let mut out = std::io::stdout();
 			write_table(&config, &prefs, &mut out, entries.into_iter())
 		},

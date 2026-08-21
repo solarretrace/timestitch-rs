@@ -22,9 +22,7 @@ use crate::Calendar;
 use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Error;
-use either::Either;
 use regex::Regex;
-use regex::Captures;
 
 // Standard library imports.
 use std::collections::BTreeMap;
@@ -46,8 +44,8 @@ pub fn process_args<'a, I, C>(
 	prefs: &Prefs,
 	opts: &CliOpts,
 	errors: &mut Vec<Error>,
-	calendar_pattern: Regex,
-	calendar_pattern_map: HashMap<usize, usize>,
+	calendar_regex: Regex,
+	calendar_regex_map: HashMap<usize, usize>,
 	calendar_parse_fmt: C::FormatReq,
 	paths: I)
 	-> Result<Vec<Entry<C>>, Error>
@@ -57,32 +55,9 @@ pub fn process_args<'a, I, C>(
 		C::ParseErr: Send + Sync + 'static
 {
 	// Compile resources.
-	let re_all: Regex = Regex::new(".*").unwrap();
-	let path_source_pattern = prefs
-		.path_source_pattern
-		.as_ref()
-		.map(|m| Regex::new(m))
-		.transpose()?;
-	let content_split_pattern = prefs
-		.content_split_pattern
-		.as_ref()
-		.map(|m| Regex::new(m))
-		.transpose()?;
-	let content_source_patterns = prefs
-		.content_source_patterns
-		.iter()
-		.map(|matcher| matcher
-			.as_deref()
-			.map(Regex::new)
-			.unwrap_or(Ok(re_all.clone())))
-		.collect::<Result<Vec<_>, _>>()?;
-
 	let mut res = Resources {
-		path_source_pattern: path_source_pattern.unwrap_or(re_all),
-		content_split_pattern,
-		content_source_patterns,
-		calendar_pattern,
-		calendar_pattern_map,
+		calendar_regex,
+		calendar_regex_map,
 		calendar_parse_fmt,
 	};
 
@@ -230,9 +205,6 @@ fn process_file<C>(
 {
 	// Setup matching for the file path.
 	let path_str = path.to_string_lossy();
-	let path_captures = res.path_source_pattern
-		.captures(&path_str)
-		.expect("construct path capture groups");
 
 	// Setup matching for the file contents.
 	let len = match file.metadata()
@@ -271,7 +243,6 @@ fn process_file<C>(
 	// Process entries.
 	match process_entries(
 			path_str.as_ref(),
-			path_captures, 
 			&text,
 			prefs,
 			entries,
@@ -289,8 +260,7 @@ fn process_file<C>(
 
 
 fn process_entries<C>(
-	source_str: &str,
-	path_captures: Captures<'_>,
+	path_str: &str,
 	text: &str,
 	prefs: &Prefs,
 	entries: &mut Vec<Entry<C>>,
@@ -300,136 +270,148 @@ fn process_entries<C>(
 		C: Calendar,
 		C::ParseErr: Send + Sync + 'static
 {
+	println!("{:?}", text);
+	println!("{:?}", res);
 	// Split the file text into its data source sections.
-	let split_contents = match res.content_split_pattern.as_ref() {
-		Some(re) => Either::Left(re.split(text)),
-		None     => Either::Right(std::iter::once(text)),
-	};
+	// let split_contents = match res.content_split_regex.as_ref() {
+	// 	Some(re) => Either::Left(re.split(text)),
+	// 	None     => Either::Right(std::iter::once(text)),
+	// };
 
 	// TODO: We only handle emitting a single entry from the file. How do we
 	// construct multiple entries from the same file? When do we try this?
-	for source in split_contents {
-		let line_captures: Vec<Option<_>> = source.lines()
-			.zip(res.content_source_patterns.iter())
-			.map(|(l, re)| re.captures(l))
-			.collect();
+	
+	let lines: Vec<_> = text.lines().collect();
+	println!("{:?}", lines.len());
 
-		// Extract the Entry ID.
-		let id = match prefs.entry_id_source {
-			MatchSource::Default => entries.len().try_into()?,
-			MatchSource::Path { group } => {
-				path_captures
-					.get(group)
-					.ok_or(anyhow!("invalid path capture group"))?
-					.as_str()
-					.parse::<u64>()?
+	// Extract the Entry ID.
+	let id = match &prefs.entry_id_source {
+		MatchSource::Default => entries.len().try_into()?,
+		MatchSource::Path { pattern } => {
+			pattern
+				.captures(path_str)
+				.ok_or(anyhow!("Entry ID: invalid path regex"))?
+				.get(1)
+				.ok_or(anyhow!("Entry ID: invalid path regex group"))?
+				.as_str()
+				.parse::<u64>()?
+		},
+		MatchSource::Content { line, pattern } => {
+			let line = lines.get(*line)
+				.ok_or(anyhow!("Entry ID: invalid line index"))?;
+			pattern
+				.captures(line)
+				.ok_or(anyhow!("Entry ID: invalid line regex"))?
+				.get(1)
+				.ok_or(anyhow!("Entry ID: invalid line regex group"))?
+				.as_str()
+				.parse::<u64>()?
+		},
+	};
+
+	// Extract the Entry TimeInterval.
+	let time = match &prefs.entry_time_source {
+		MatchSource::Default => TimeInterval::<C>::unknown(),
+		MatchSource::Path { pattern } => {
+			TimeInterval::parse_format(
+				pattern
+					.captures(path_str)
+					.ok_or(anyhow!("Entry time interval: invalid path regex"))?
+					.get(1)
+					.ok_or(anyhow!("Entry time interval: invalid path regex /
+						group"))?
+					.as_str(),
+				&res.calendar_parse_fmt,
+				&res.calendar_regex,
+				&res.calendar_regex_map)?
+		},
+		MatchSource::Content { line, pattern } => {
+			let line = lines.get(*line)
+				.ok_or(anyhow!("Entry time interval: invalid line index"))?;
+			TimeInterval::parse_format(
+				pattern
+					.captures(line)
+					.ok_or(anyhow!("Entry time interval: invalid line regex"))?
+					.get(1)
+					.ok_or(anyhow!("Entry time interval: invalid line regex \
+						group"))?
+					.as_str(),
+				&res.calendar_parse_fmt,
+				&res.calendar_regex,
+				&res.calendar_regex_map)?
+		},
+	};
+
+	// Extract the Entry source file.
+	let source_path = DataSource(path_str.into());
+
+	// Extract the Entry source ref.
+	let source_ref = match &prefs.entry_ref_source {
+		None                       |
+		Some(MatchSource::Default) => String::new().into_boxed_str(),
+		Some(MatchSource::Path { pattern }) => {
+			pattern
+				.captures(path_str)
+				.ok_or(anyhow!("Entry source ref: invalid path regex"))?
+				.get(1)
+				.ok_or(anyhow!("Entry source ref: invalid path regex group"))?
+				.as_str()
+				.to_owned()
+				.into_boxed_str()
+		},
+		Some(MatchSource::Content { line, pattern }) => {
+			let line = lines.get(*line)
+				.ok_or(anyhow!("Entry source ref: invalid line index"))?;
+			pattern
+				.captures(line)
+				.ok_or(anyhow!("Entry source ref: invalid line regex"))?
+				.get(1)
+				.ok_or(anyhow!("Entry source ref: invalid line regex \
+					group"))?
+				.as_str()
+				.to_owned()
+				.into_boxed_str()
+		},
+	};
+
+	// Extract the Entry attributes.
+	let mut attributes = BTreeMap::new();
+	for (key, msa) in prefs.entry_attribute_sources.iter() {
+		let attribute = match msa {
+			MatchSourceAttribute::Path { pattern, format } => {
+				let s = pattern
+					.captures(path_str)
+					.ok_or(anyhow!("Entry attribute: invalid path regex"))?
+					.get(1)
+					.ok_or(anyhow!("Entry attribute: invalid path regex group"))?
+					.as_str();
+
+				format.parse_dyn(s)?
 			},
-			MatchSource::Content { line, group } => {
-				line_captures
-					.get(line)
-					.ok_or(anyhow!("invalid line index"))?
-					.as_ref()
-					.ok_or(anyhow!("line capture match failed"))?
-					.get(group)
-					.ok_or(anyhow!("invalid line capture group"))?
-					.as_str()
-					.parse::<u64>()?
+			MatchSourceAttribute::Content { line, pattern, format } => {
+				let line = lines.get(*line)
+					.ok_or(anyhow!("Entry attribute: invalid line index"))?;
+				let s = pattern
+					.captures(line)
+					.ok_or(anyhow!("Entry attribute: invalid line regex"))?
+					.get(1)
+					.ok_or(anyhow!("Entry attribute: invalid line regex \
+						group"))?
+					.as_str();
+
+				format.parse_dyn(s)?
 			},
 		};
-
-		// Extract the Entry TimeInterval.
-		let time = match prefs.entry_time_source {
-			MatchSource::Default => TimeInterval::<C>::unknown(),
-			MatchSource::Path { group } => {
-				TimeInterval::parse_format(
-					path_captures
-						.get(group)
-						.ok_or(anyhow!("invalid path capture group"))?
-						.as_str(),
-					todo!(),
-					todo!(),
-					todo!())?
-			},
-			MatchSource::Content { line, group } => {
-				TimeInterval::parse_format(
-					line_captures
-						.get(line)
-						.ok_or(anyhow!("invalid line index"))?
-						.as_ref()
-						.ok_or(anyhow!("line capture match failed"))?
-						.get(group)
-						.ok_or(anyhow!("invalid line capture group"))?
-						.as_str(),
-					todo!(),
-					todo!(),
-					todo!())?
-			},
-		};
-
-		// Extract the Entry source file.
-		let source_path = DataSource(source_str.into());
-
-		// Extract the Entry source ref.
-		let source_ref = match prefs.entry_ref_source {
-			None          |
-			Some(MatchSource::Default) => String::new().into_boxed_str(),
-			Some(MatchSource::Path { group }) => {
-				path_captures
-					.get(group)
-					.ok_or(anyhow!("invalid path capture group"))?
-					.as_str()
-					.to_owned()
-					.into_boxed_str()
-			},
-			Some(MatchSource::Content { line, group }) => {
-				line_captures
-					.get(line)
-					.ok_or(anyhow!("invalid line index"))?
-					.as_ref()
-					.ok_or(anyhow!("line capture match failed"))?
-					.get(group)
-					.ok_or(anyhow!("invalid line capture group"))?
-					.as_str()
-					.to_owned()
-					.into_boxed_str()
-			},
-		};
-
-		// Extract the Entry attributes.
-		let mut attributes = BTreeMap::new();
-		for (key, msa) in prefs.entry_attribute_sources.iter() {
-			let attribute = match *msa {
-				MatchSourceAttribute::Path { group, format } => {
-					format.parse_dyn(
-						path_captures
-							.get(group)
-							.ok_or(anyhow!("invalid path capture group"))?
-							.as_str())?
-						
-				},
-				MatchSourceAttribute::Content { line, group, format } => {
-					format.parse_dyn(
-						line_captures
-							.get(line)
-							.ok_or(anyhow!("invalid line index"))?
-							.as_ref()
-							.ok_or(anyhow!("line capture match failed"))?
-							.get(group)
-							.ok_or(anyhow!("invalid line capture group"))?
-							.as_str())?
-				},
-			};
-			attributes.insert(key.clone(), attribute);
-		}
-
-		entries.push(Entry {
-			id,
-			time,
-			source_path,
-			source_ref,
-			attributes,
-		})
+		attributes.insert(key.clone(), attribute);
 	}
+
+	entries.push(Entry {
+		id,
+		time,
+		source_path,
+		source_ref,
+		attributes,
+	});
 	Ok(())
 }
 
@@ -440,16 +422,10 @@ fn process_entries<C>(
 /// Resources used for processing entries.
 #[derive(Debug, Clone)]
 struct Resources<P> {
-	/// The compiled path pattern.
-	pub path_source_pattern: Regex,
-	/// The compiled content splitter pattern.
-	pub content_split_pattern: Option<Regex>,
-	/// The compiled content line patterns.
-	pub content_source_patterns: Vec<Regex>,
 	/// The compiled calendar pattern.
-	pub calendar_pattern: Regex,
+	pub calendar_regex: Regex,
 	/// The calendar pattern capture group map.
-	pub calendar_pattern_map: HashMap<usize, usize>,
+	pub calendar_regex_map: HashMap<usize, usize>,
 	/// The calendar value parse format information.
 	pub calendar_parse_fmt: P,
 }

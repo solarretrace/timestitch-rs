@@ -39,6 +39,44 @@ impl<'a, 'b> CapturesMap<'a, 'b> {
     /// Returns the capture group at the given re-mapped index.
     pub (in crate) fn get(&self, idx: usize) -> Option<Match<'a>> {
         self.map.get(&idx)
+            .or(Some(&idx))
             .and_then(|k| self.inner.get(*k))
+    }
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Serialization helpers
+////////////////////////////////////////////////////////////////////////////////
+/// Serde serialization/deserialization module for `Vec<Option<Regex>>`
+pub (in crate) mod vec_option_regex {
+    use regex::Regex;
+    use serde::Deserialize as _;
+    use serde::Deserializer;
+    use serde::ser::SerializeSeq;
+    use serde::Serializer;
+    use serde_regex::Serde;
+
+    /// Serializes a `Vec<Option<Regex>>` value into `s`.
+    #[allow(unused)]
+    pub (in crate) fn serialize<S: Serializer>(v: &Vec<Option<Regex>>, s: S)
+        -> Result<S::Ok, S::Error>
+    {
+        let mut seq = s.serialize_seq(Some(v.len()))?;
+        for item in v {
+            // Uses Serde<&Option<Regex>> impl
+            seq.serialize_element(&Serde(item))?;
+        }
+        seq.end()
+    }
+
+    /// Deserializes a `Vec<Option<Regex>>` value from `d`.
+    #[allow(unused)]
+    pub (in crate) fn deserialize<'de, D: Deserializer<'de>>(d: D)
+        -> Result<Vec<Option<Regex>>, D::Error>
+    {
+        let wrapped: Vec<Serde<Option<Regex>>> = Vec::deserialize(d)?;
+        Ok(wrapped.into_iter().map(Serde::into_inner).collect())
     }
 }

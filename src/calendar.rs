@@ -33,7 +33,7 @@ use std::fmt::Display;
 pub trait Calendar: Debug + Display + Clone + PartialOrd + PartialEq + 'static {
 	/// Data provided for specifying the format requirements of the calendar
 	/// value.
-	type FormatReq: Clone;
+	type FormatReq: Debug + Clone;
 
 	/// The associated error which can be returned from parsing.
 	type ParseErr: std::error::Error;
@@ -93,7 +93,9 @@ pub enum CalendarSystem {
 impl Default for CalendarSystem {
 	fn default() -> Self {
 		Self::GregorianProleptic {
-			pattern: ".*".to_string().into_boxed_str(),
+			pattern: "(\\d\\d\\d\\d)(\\d\\d)?(\\d\\d)?"
+				.to_string()
+				.into_boxed_str(),
 			pattern_map: HashMap::new(),
 			format: ParseFormat {
 				date: DateFormat::Ymd,

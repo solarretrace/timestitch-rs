@@ -13,10 +13,11 @@ use crate::Calendar;
 
 // External library imports.
 use anyhow::Error;
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
-use table_gen::Row;
 use table_gen::Cell;
+use table_gen::Row;
 
 // Standard library imports.
 use std::collections::BTreeMap;
@@ -83,16 +84,20 @@ impl<C> Row for Entry<C>
 ////////////////////////////////////////////////////////////////////////////////
 // Input data source matching
 ////////////////////////////////////////////////////////////////////////////////
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub enum MatchSource {
 	Default,
 	Path {
-		group: usize
+		#[serde(default="re_all_group_1")]
+		#[serde(with="serde_regex")]
+		pattern: Regex,
 	},
 	Content {
 		line: usize,
-		group: usize
+		#[serde(default="re_all_group_1")]
+		#[serde(with="serde_regex")]
+		pattern: Regex,
 	},
 }
 
@@ -100,18 +105,26 @@ impl Default for MatchSource {
 	fn default() -> Self { MatchSource::Default }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub enum MatchSourceAttribute {
 	Path {
-		group: usize,
+		#[serde(default="re_all_group_1")]
+		#[serde(with="serde_regex")]
+		pattern: Regex,
 		format: MatchFormat,
 	},
 	Content {
 		line: usize,
-		group: usize,
+		#[serde(default="re_all_group_1")]
+		#[serde(with="serde_regex")]
+		pattern: Regex,
 		format: MatchFormat,
 	},
+}
+
+fn re_all_group_1() -> Regex {
+	Regex::new("(.*)").unwrap()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,3 +166,6 @@ impl PartialOrd for DataSource {
 		self.0.as_os_str().partial_cmp(other.0.as_os_str())
 	}
 }
+
+
+

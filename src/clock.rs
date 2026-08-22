@@ -25,6 +25,7 @@ use regex::Regex;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::num::ParseIntError;
+use std::fmt::Display;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,6 +284,11 @@ impl ClockTime {
 		self.second
 	}
 
+	/// Returns an object with a `Display` impl suitable to the given time
+	/// format.
+	pub fn display(&self, format: TimeFormat) -> ClockTimeDisplay {
+		ClockTimeDisplay { value: *self, format, }
+	}
 }
 
 impl std::fmt::Display for ClockTime {
@@ -375,6 +381,38 @@ impl Calendar for ClockTime {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// ClockTimeDisplay
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug, Clone, Copy)]
+pub struct ClockTimeDisplay {
+	pub value: ClockTime,
+	pub format: TimeFormat,
+}
+
+impl Display for ClockTimeDisplay {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		use TimeFormat::*;
+		let (h, suffix) = match self.format {
+			Hours12 => (
+				self.value.hour % 12,
+				if self.value.hour / 12 == 0 { "am" } else { "pm" }),
+			Hours24 => (self.value.hour, ""),
+		};
+
+		match self.value {
+			ClockTime { minute: None, second: None, .. }
+				=> write!(f, "{:02}{}", h, suffix),
+			ClockTime { minute: Some(m), second: None, .. }
+				=> write!(f, "{:02}:{:02}{}", h, m, suffix),
+			ClockTime { minute: None, second: Some(s), .. }
+				=> write!(f, "{:02}:00:{:02}{}", h, s, suffix),
+			ClockTime { minute: Some(m), second: Some(s), .. }
+				=> write!(f, "{:02}:{:02}:{:02}{}", h, m, s, suffix),
+		}
+	}
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Errors
@@ -393,14 +431,33 @@ impl From<ParseIntError> for ClockTimeParseError {
 	}
 }
 
-impl std::fmt::Display for ClockTimeParseError {
+impl Display for ClockTimeParseError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		use ClockTimeParseError::*;
+		match self {
+			InvalidClockTime          => write!(f, "failed to parse clock time \
+				calendar value: invalid time"),
+			CaptureMatchFailure(e)    => write!(f, "failed to parse clock time \
+				calendar value: {}", e),
+			CaptureGroupCountError(e) => write!(f, "failed to parse clock time \
+				calendar value: {}", e),
+			ParseIntError(e)          => write!(f, "failed to parse clock time \
+				calendar value: {}", e),
+		}
 	}
 }
 
-impl std::error::Error for ClockTimeParseError {}
-
+impl std::error::Error for ClockTimeParseError {
+	fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+		use ClockTimeParseError::*;
+		match self {
+			InvalidClockTime          |
+			CaptureMatchFailure(_)    => None,
+			CaptureGroupCountError(e) => Some(e),
+			ParseIntError(e)          => Some(e),
+		}
+	}
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Tests

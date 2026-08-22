@@ -29,7 +29,7 @@ use std::fmt::Debug;
 // Attribute
 ////////////////////////////////////////////////////////////////////////////////
 /// A record attribute.
-pub trait Attribute: Cell + Debug {}
+pub trait Attribute: Debug + Cell {}
 
 // Blanket impl for all Debug + Cell + 'static.
 impl<T: Debug + Cell + 'static> Attribute for T {}

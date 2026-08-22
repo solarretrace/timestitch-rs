@@ -270,8 +270,8 @@ fn process_entries<C>(
 		C: Calendar,
 		C::ParseErr: Send + Sync + 'static
 {
-	println!("{:?}", text);
-	println!("{:?}", res);
+	println!("{:?}", path_str);
+	
 	// Split the file text into its data source sections.
 	// let split_contents = match res.content_split_regex.as_ref() {
 	// 	Some(re) => Either::Left(re.split(text)),
@@ -282,7 +282,6 @@ fn process_entries<C>(
 	// construct multiple entries from the same file? When do we try this?
 	
 	let lines: Vec<_> = text.lines().collect();
-	println!("{:?}", lines.len());
 
 	// Extract the Entry ID.
 	let id = match &prefs.entry_id_source {
@@ -383,7 +382,8 @@ fn process_entries<C>(
 					.captures(path_str)
 					.ok_or(anyhow!("Entry attribute: invalid path regex"))?
 					.get(1)
-					.ok_or(anyhow!("Entry attribute: invalid path regex group"))?
+					.ok_or(anyhow!("Entry attribute: invalid path regex \
+						group"))?
 					.as_str();
 
 				format.parse_dyn(s)?

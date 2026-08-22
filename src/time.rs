@@ -22,7 +22,6 @@ use std::fmt::Debug;
 use std::fmt::Display;
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // TimeInterval
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,7 +150,16 @@ impl<C> Display for TimeBound<C>
 	where C: Calendar
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		todo!()
+		use TimeBound::*;
+		match self {
+			Unbounded              => write!(f, "unknown"),
+			At { period }          => write!(f, "{}", period),
+			IntervalRef { id }     => write!(f, "ref {}", id),
+			BoundRef { id, bound } => match bound {
+				Endpoint::Start => write!(f, "ref start of {}", id),
+				Endpoint::End   => write!(f, "ref end of {}", id),
+			}
+		}
 	}
 }
 

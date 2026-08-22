@@ -177,12 +177,22 @@ impl GregorianProleptic {
 			},
 		}
 	}
+
+	/// Returns an object with a `Display` impl suitable to the given format.
+	pub fn display(&self, date_format: DateFormat, time_format: TimeFormat)
+		-> GregorianProlepticDisplay
+	{
+		GregorianProlepticDisplay {
+			value: *self,
+			date_format,
+			time_format,
+		}
+	}
 }
 
 impl Display for GregorianProleptic {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		// NOTE: Values are 0-indexed.
-		todo!()
+		write!(f, "{}", self.display(DateFormat::Ymd, TimeFormat::Hours24))
 	}
 }
 
@@ -580,6 +590,42 @@ impl DateFormat {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// GregorianProlepticDisplay
+////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug, Clone, Copy)]
+pub struct GregorianProlepticDisplay {
+	pub value: GregorianProleptic,
+	pub date_format: DateFormat,
+	pub time_format: TimeFormat,
+}
+
+impl Display for GregorianProlepticDisplay {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		use GregorianProleptic::*;
+		match self.value.normalized() {
+			Ymd { year, month, day, time } => {
+				write!(f, "{:04}", year)?;
+				if let Some(m) = month { write!(f, "{:02}", m)?; };
+				if let Some(d) = day { write!(f, "{:02}", d)?; };
+				if let Some(t) = time {
+					write!(f, "{}", t.display(self.time_format))?;
+				};
+			},
+			Ywd { year, week, weekday, time } => {
+				write!(f, "{:04}w{:02}", year, week)?;
+				if let Some(d) = weekday { write!(f, "{}", d)?; };
+				if let Some(t) = time {
+					write!(f, "{}", t.display(self.time_format))?;
+				};
+			},
+			_ => unreachable!(),
+		}
+		Ok(())
+	}
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Errors
 ////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone)]
@@ -617,12 +663,34 @@ impl From<ClockTimeParseError> for GregorianProlepticParseError {
 
 impl Display for GregorianProlepticParseError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		// NOTE: Values are 0-indexed.
-		todo!()
+		use GregorianProlepticParseError::*;
+		match self {
+			CaptureMatchFailure(e)    => write!(f, "failed to parse Gregorian \
+				proleptic calendar value: {}", e),
+			CaptureGroupCountError(e) => write!(f, "failed to parse Gregorian \
+				proleptic calendar value: {}", e),
+			ClockTimeParseError(e)    => write!(f, "failed to parse Gregorian \
+				proleptic calendar value: {}", e),
+			ParseIntError(e)          => write!(f, "failed to parse Gregorian \
+				proleptic calendar value: {}", e),
+			ParseWeekdayError(e)      => write!(f, "failed to parse Gregorian \
+				proleptic calendar value: {}", e),
+		}
 	}
 }
 
-impl std::error::Error for GregorianProlepticParseError {}
+impl std::error::Error for GregorianProlepticParseError {
+	fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+		use GregorianProlepticParseError::*;
+		match self {
+			CaptureMatchFailure(_)    => None,
+			CaptureGroupCountError(e) => Some(e),
+			ClockTimeParseError(e)    => Some(e),
+			ParseIntError(e)          => Some(e),
+			ParseWeekdayError(e)      => Some(e),
+		}
+	}
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////

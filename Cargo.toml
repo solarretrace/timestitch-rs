@@ -1,6 +1,6 @@
 [package]
 name = "timestitch"
-version = "0.2.28"
+version = "0.2.29"
 authors = ["Skylor R Schermer <skyschermer@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
